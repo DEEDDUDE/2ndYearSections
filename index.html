@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Section Picker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">Loading…</div>
+
+  <script type="module">
+    import { buildCombos, errors, courses, num, gridHTML, railHTML, statsHTML,
+             computeBadges, nudgeHTML, noticeHTML, sortControlHTML,
+             introHTML, langToggleHTML, blockPopoverHTML,
+             printHeaderHTML, scheduleTableHTML, dailyTotalsHTML, printFooterHTML,
+             STRINGS } from "./app.js";
+
+    const combos = buildCombos();
+    const valid  = combos.filter((c) => c.valid);
+    const totalCH = Object.values(courses).reduce((sum, c) => sum + c.ch, 0);
+    const courseCount = Object.keys(courses).length;
+
+    // ---- §19: language — toggle is reachable from every screen, persists everywhere ----
+    const savedLang = localStorage.getItem("lang");
+    const initialLang = savedLang === "ar" || savedLang === "en" ? savedLang : "en";
+
+    // ---- §13: two screens, hash-routed so refresh/back work ----
+    function screenFromHash() {
+      return location.hash.replace(/^#/, "").startsWith("sections") ? "sections" : "intro";
+    }
+    function comboFromHash() {
+      const m = /^sections\/(.+)$/.exec(location.hash.replace(/^#/, ""));
+      return m ? m[1] : null;
+    }
+
+    const state = {
+      lang: initialLang,
+      screen: screenFromHash(),
+      // §21 — mobile-only: which of the two sections sub-screens is
+      // showing. Derived from hash id-presence: "#sections" -> list,
+      // "#sections/<id>" -> detail. Desktop ignores this entirely and
+      // always shows both panes, same as before.
+      mobileScreen: comboFromHash() ? "detail" : "list",
+      view: "withLabs",
+      selectedId: valid[0]?.id,
+      sort: "section",
+    };
+    { const c = comboFromHash(); if (c && combos.some((x) => x.id === c)) state.selectedId = c; }
+
+    const app = document.getElementById("app");
+    const prefersReduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isMobile = () => matchMedia("(max-width: 767px)").matches;
+
+    function applyDocLang() {
+      document.documentElement.lang = state.lang;
+      document.documentElement.dir = state.lang === "ar" ? "rtl" : "ltr";
+    }
+    applyDocLang();
+
+    function bannerHTML() {
+      const S = STRINGS[state.lang];
+      if (!errors.length) return "";
+      return `<div class="banner">
+        <b>${S.problems(errors.length)}</b>
+        <ul>${errors.map((e) => `<li>${e}</li>`).join("")}</ul>
+      </div>`;
+    }
+
+    function sectionsHTML(animate) {
+      const S = STRINGS[state.lang];
+      const sel = combos.find((c) => c.id === state.selectedId);
+      const badges = computeBadges(combos, state.view);   // recomputed per view
+      // §21 — mobile detail header (back arrow + combo id), shown only
+      // when data-mobile-screen="detail"; the normal appbar/langtoggle
+      // hide there to keep it minimal. Desktop ignores all of this.
+      const detailCode = sel ? `${num(sel.section, state.lang)} / ${num(sel.labCode, state.lang)}` : "";
+      return `
+        <div class="sectionsview" data-mobile-screen="${state.mobileScreen}">
+          ${langToggleHTML(state.lang)}
+          ${bannerHTML()}
+          <div class="appbar">
+            <button class="hometab" data-home>
+              <span aria-hidden="true">←</span> ${S.backToHome}
+            </button>
+            <h1>${S.appTitle}</h1>
+            <div class="sub">${S.subtitle(num(totalCH, state.lang), num(courseCount, state.lang), num(valid.length, state.lang))}</div>
+          </div>
+          <div class="detailheader">
+            <button class="backarrow" data-back aria-label="${S.backToList}">
+              <span aria-hidden="true">←</span>
+            </button>
+            <span class="detailheader-code">${detailCode}</span>
+          </div>
+          <div class="viewtoggle" role="group" aria-label="Week view">
+            <button data-view="withLabs" aria-pressed="${state.view === "withLabs"}">${S.fullWeek}</button>
+            <button data-view="lecturesOnly" aria-pressed="${state.view === "lecturesOnly"}">${S.lectureWeek}</button>
+          </div>
+          <div class="layout">
+            <aside class="rail">
+              ${sortControlHTML(state.sort, state.lang)}
+              ${railHTML(combos, state.view, state.selectedId, badges, state.sort, state.lang)}
+            </aside>
+            <div class="canvas">
+              ${sel ? noticeHTML(sel, state.lang) : ""}
+              ${sel ? gridHTML(sel, state.view, animate, state.lang) : `<p>${S.noCombo}</p>`}
+              ${sel && sel.valid ? `
+                <div class="printonly">
+                  ${printHeaderHTML(sel, state.view, state.lang)}
+                  ${scheduleTableHTML(sel, state.view, state.lang)}
+                  ${dailyTotalsHTML(sel, state.view, state.lang)}
+                  ${printFooterHTML(state.lang)}
+                </div>
+                <button class="savepdf" data-savepdf>${S.saveAsPdf}</button>
+                <div class="savepdf-hint">${S.landscapeHint}</div>
+              ` : ""}
+              ${sel && sel.valid ? statsHTML(sel, state.view, state.lang) : ""}
+              ${sel && sel.valid ? nudgeHTML(sel, combos, state.view, state.lang) : ""}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderIntro() {
+      closeBlockPopover();     // never leave a stale popover floating over the new screen
+      app.innerHTML = introHTML(combos, state.lang);
+      wireIntro();
+    }
+    function renderSections(animate, quickPick) {
+      closeBlockPopover();
+      app.innerHTML = sectionsHTML(animate);
+      if (animate && quickPick) {
+        // §20 — the chosen combo's blocks land last and hold a 1px eosin
+        // outline for 600ms, so the eye lands on the answer.
+        const g = app.querySelector(".grid");
+        if (g) g.classList.add("quickpick-land");
+      }
+      wireSections();
+      const selEl = app.querySelector(".rail .item.selected");
+      if (selEl) selEl.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    function renderCurrentScreen(animate = false, quickPick = false) {
+      if (state.screen === "intro") renderIntro();
+      else renderSections(animate, quickPick);
+    }
+
+    // §21 — hash id-presence doubles as the mobile list/detail signal:
+    // "#sections" (no id) is the list, "#sections/<id>" is the detail
+    // screen for that combo. Desktop's rendered layout is unaffected
+    // either way (both panes always visible there).
+    function pushHash() {
+      const hash = state.screen === "sections"
+        ? `#sections${state.mobileScreen === "detail" && state.selectedId ? "/" + state.selectedId : ""}`
+        : "#intro";
+      if (location.hash !== hash) history.pushState(null, "", hash);
+    }
+
+    // ---- §20: the two transition moments -------------------------
+    // Snapshots the outgoing screen as a fixed "ghost" that lifts/fades
+    // (or sinks, in reverse) while the new screen renders normally
+    // underneath — already mid-stagger by the time the ghost clears.
+    // Gated behind reduced motion; a raw load/refresh never calls this.
+    function animateScreenChange(applyState, { quickPick = false, reverse = false } = {}) {
+      if (prefersReduced()) {
+        applyState();
+        renderCurrentScreen(state.screen === "sections", false);
+        return;
+      }
+      const ghostSource = app.innerHTML;
+      applyState();
+      renderCurrentScreen(true, quickPick);
+      const ghost = document.createElement("div");
+      ghost.className = "screen-ghost" + (reverse ? " reverse" : "");
+      ghost.innerHTML = ghostSource;
+      document.body.appendChild(ghost);
+      void ghost.offsetHeight;             // force layout so "leaving" starts a real transition,
+      ghost.classList.add("leaving");      // not a rAF callback — those can stall on a backgrounded tab
+      const remove = () => ghost.remove();
+      ghost.addEventListener("transitionend", remove, { once: true });
+      setTimeout(remove, 400);             // safety net: never leave a ghost stuck on screen
+    }
+
+    // §21 — mobile list<->detail: same snapshot-ghost technique as
+    // animateScreenChange, but a horizontal slide instead of a vertical
+    // lift/fade, and scoped to <768px (desktop never calls this).
+    function slideMobileScreen(applyState, { reverse = false } = {}) {
+      if (prefersReduced() || !isMobile()) {
+        applyState();
+        renderSections(true, false);
+        return;
+      }
+      const ghostSource = app.innerHTML;
+      applyState();
+      renderSections(true, false);
+      const entering = app.querySelector(".sectionsview");
+      if (entering) entering.classList.add(reverse ? "slide-in-list" : "slide-in-detail");
+      const ghost = document.createElement("div");
+      ghost.className = "mobile-slide-ghost" + (reverse ? " reverse" : "");
+      ghost.innerHTML = ghostSource;
+      document.body.appendChild(ghost);
+      void ghost.offsetHeight;
+      ghost.classList.add("leaving");
+      const remove = () => ghost.remove();
+      ghost.addEventListener("transitionend", remove, { once: true });
+      setTimeout(remove, 400);
+    }
+
+    function goToSections(comboId, quickPick) {
+      const mobileTarget = comboId ? "detail" : "list";
+      if (state.screen === "sections") {   // already there — just select
+        state.selectedId = comboId ?? state.selectedId;
+        state.mobileScreen = mobileTarget;
+        renderSections(true, quickPick);
+        pushHash();
+        return;
+      }
+      animateScreenChange(() => {
+        state.screen = "sections";
+        state.mobileScreen = mobileTarget;
+        if (comboId) state.selectedId = comboId;
+      }, { quickPick });
+      pushHash();
+    }
+
+    // Explicit "back to home" control — the same reverse transition
+    // browser-back already plays when going sections -> intro.
+    function goToIntro() {
+      if (state.screen === "intro") return;
+      animateScreenChange(() => { state.screen = "intro"; }, { reverse: true });
+      pushHash();
+    }
+
+    window.addEventListener("popstate", () => {
+      const desiredScreen = screenFromHash();
+      const comboId = comboFromHash();
+
+      if (desiredScreen !== state.screen) {
+        const reverse = state.screen === "sections" && desiredScreen === "intro";
+        animateScreenChange(() => {
+          state.screen = desiredScreen;
+          state.mobileScreen = comboId ? "detail" : "list";
+          if (comboId && combos.some((c) => c.id === comboId)) state.selectedId = comboId;
+        }, { reverse });
+        return;
+      }
+      if (desiredScreen === "sections") {   // §21 — within sections: list <-> detail
+        const desiredMobile = comboId ? "detail" : "list";
+        if (desiredMobile !== state.mobileScreen) {
+          const reverse = state.mobileScreen === "detail" && desiredMobile === "list";
+          slideMobileScreen(() => {
+            state.mobileScreen = desiredMobile;
+            if (comboId && combos.some((c) => c.id === comboId)) state.selectedId = comboId;
+          }, { reverse });
+        }
+      }
+    });
+
+    // §9 — printing always uses the Full-week view (labs included),
+    // regardless of what's toggled on screen, so a printed/PDF'd
+    // schedule never quietly omits labs. The on-screen toggle is
+    // restored after printing via "afterprint" rather than assuming
+    // window.print() blocks — some browsers return immediately.
+    // The filename is set via document.title, since that's the only
+    // thing browsers use to suggest a "Save as PDF" filename.
+    function handleSaveAsPdf() {
+      const sel = combos.find((c) => c.id === state.selectedId);
+      if (!sel) return;
+      const originalView = state.view;
+      const originalTitle = document.title;
+
+      if (state.view !== "withLabs") {
+        state.view = "withLabs";
+        renderSections(false, false);
+      }
+      document.title = `Schedule-Section${sel.section}-Labs${sel.labCode}`;
+
+      const restore = () => {
+        document.title = originalTitle;
+        if (state.view !== originalView) {
+          state.view = originalView;
+          renderSections(false, false);
+        }
+        window.removeEventListener("afterprint", restore);
+      };
+      window.addEventListener("afterprint", restore);
+      window.print();
+    }
+
+    // ---- sections-screen interactions ----
+    // §21 — opening a combo FROM the mobile list triggers the slide to
+    // the detail screen; switching combos while already on the detail
+    // screen (desktop rail click, or the nudge's "Switch to X") is just
+    // an in-place re-render, same as before.
+    function selectCombo(id) {
+      const c = combos.find((x) => x.id === id);
+      if (!c) return;
+      const wasList = state.mobileScreen === "list";
+      const apply = () => { state.selectedId = id; state.mobileScreen = "detail"; };
+      if (wasList) {
+        slideMobileScreen(apply);
+      } else {
+        apply();
+        renderSections(true, false);     // stagger runs on selection only
+      }
+      pushHash();
+    }
+    function setView(v) {
+      if (v === state.view) return;
+      state.view = v;                    // full re-render → stats + badges recompute live
+      renderSections(false, false);
+    }
+    function setSort(key) {
+      if (key === state.sort) return;
+      state.sort = key;                  // single mode, always ascending — see app.js §16 note
+      renderSections(false, false);
+    }
+
+    // ---- language toggle: reachable from every screen (§19) ----
+    function setLang(lang) {
+      if (lang === state.lang) return;
+      state.lang = lang;
+      localStorage.setItem("lang", state.lang);
+      applyDocLang();
+      // a language switch isn't one of the two transition moments —
+      // re-render the current screen in place, no stagger, no ghost
+      renderCurrentScreen(false, false);
+    }
+    function wireLangToggle() {
+      app.querySelectorAll(".langtoggle button[data-lang]").forEach((el) => {
+        el.addEventListener("click", () => setLang(el.dataset.lang));
+      });
+    }
+
+    // §21 — block detail popover, mobile-only. Desktop's block click is
+    // still a no-op (checked at click time, not render time, so a
+    // resize across the breakpoint needs no re-render to take effect).
+    function openBlockPopover(el) {
+      closeBlockPopover();
+      const info = {
+        course: el.dataset.course, kind: el.dataset.kind, day: el.dataset.day,
+        start: el.dataset.start, end: el.dataset.end,
+        room: el.dataset.room, roomUncertain: el.dataset.roomUncertain,
+        labCode: el.dataset.labCode,
+      };
+      const scrim = document.createElement("div");
+      scrim.className = "popoverscrim";
+      scrim.innerHTML = `<div class="blockpopover" role="dialog" aria-modal="true">${blockPopoverHTML(info, state.lang)}</div>`;
+      document.body.appendChild(scrim);
+      scrim.addEventListener("click", (e) => { if (e.target === scrim) closeBlockPopover(); });
+      scrim.querySelector("[data-popover-close]")?.addEventListener("click", closeBlockPopover);
+      document.addEventListener("keydown", onPopoverKeydown);
+    }
+    function onPopoverKeydown(e) { if (e.key === "Escape") closeBlockPopover(); }
+    function closeBlockPopover() {
+      document.querySelector(".popoverscrim")?.remove();
+      document.removeEventListener("keydown", onPopoverKeydown);
+    }
+
+    function wireSections() {
+      wireLangToggle();
+      app.querySelectorAll('.rail .item[data-id]').forEach((el) => {
+        el.addEventListener("click", () => selectCombo(el.dataset.id));
+        el.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectCombo(el.dataset.id); }
+        });
+      });
+      app.querySelectorAll('.viewtoggle button[data-view]').forEach((el) => {
+        el.addEventListener("click", () => setView(el.dataset.view));
+      });
+      app.querySelectorAll('.sortctl button[data-sort]').forEach((el) => {
+        el.addEventListener("click", () => setSort(el.dataset.sort));
+      });
+      const sw = app.querySelector('.nudge button[data-switch]');
+      if (sw) sw.addEventListener("click", () => selectCombo(sw.dataset.switch));
+      const back = app.querySelector('[data-back]');
+      if (back) back.addEventListener("click", () => history.back());
+      const home = app.querySelector('[data-home]');
+      if (home) home.addEventListener("click", goToIntro);
+      const savepdf = app.querySelector('[data-savepdf]');
+      if (savepdf) savepdf.addEventListener("click", handleSaveAsPdf);
+      app.querySelectorAll('.grid .block').forEach((el) => {
+        el.addEventListener("click", () => { if (isMobile()) openBlockPopover(el); });
+      });
+    }
+
+    // ---- intro-screen interactions ----
+    function wireIntro() {
+      wireLangToggle();
+      const browse = app.querySelector("[data-browse]");
+      if (browse) browse.addEventListener("click", () => goToSections(null, false));
+      app.querySelectorAll(".pickcard[data-combo]").forEach((el) => {
+        el.addEventListener("click", () => goToSections(el.dataset.combo, true));
+        el.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToSections(el.dataset.combo, true); }
+        });
+      });
+    }
+
+    // ---- bootstrap: instant, no transition — a refresh must not animate ----
+    history.replaceState(null, "", state.screen === "sections"
+      ? `#sections${state.mobileScreen === "detail" && state.selectedId ? "/" + state.selectedId : ""}`
+      : "#intro");
+    renderCurrentScreen(false, false);
+  </script>
+</body>
+</html>

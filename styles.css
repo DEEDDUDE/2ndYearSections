@@ -1,0 +1,683 @@
+/* ============================================================
+   Section Picker — visual pass (step 6).
+   Palette: H&E staining (hematoxylin + eosin), room 0601.
+   Type: Readex Pro (display) · IBM Plex Sans Arabic (body) ·
+         IBM Plex Mono (all data — times, codes, stats).
+   Signature: dead time drawn as material (the void panels).
+   Quiet everywhere else — hairline rules, no shadows, no
+   gradients, no radius beyond 4px.
+   ============================================================ */
+
+:root {
+  /* H&E palette (BUILD-SPEC §8 — do not substitute) */
+  --slide:    #FBF7F4;   /* prepared slide, unstained — page ground */
+  --hema:     #2E2A5C;   /* hematoxylin — primary ink */
+  --hema-lo:  #6B66A8;   /* diluted — secondary text, grid rules */
+  --eosin:    #D4547E;   /* eosin — accent, selection, active */
+  --eosin-lo: #F5D8E2;   /* eosin wash */
+  --void:     #E8E2DD;   /* dead time — visible negative space. Stays
+                             neutral: the signature, must not compete
+                             with six course hues. */
+  --clash:    #E5484D;   /* a real conflict, not a course — always red */
+
+  /* §17 — six real laboratory stains, one per course. Spread across
+     the wheel; iodine/safranin separated on lightness too, so they
+     hold up colour-blind and in greyscale print. */
+  --c-ph: #C08A2E;  /* iodine          — Public Health */
+  --c-mb: #2C6FAF;  /* methylene blue  — Molecular Biology */
+  --c-bc: #1F7A6B;  /* malachite green — Biochemistry */
+  --c-mc: #6A4C93;  /* crystal violet  — Microbiology */
+  --c-pa: #D4547E;  /* eosin           — Pathology */
+  --c-pm: #A03528;  /* safranin        — Pharmacology */
+
+  --display: "Readex Pro", system-ui, sans-serif;
+  --body:    "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --mono:    "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+
+  --rule: color-mix(in srgb, var(--hema-lo) 28%, var(--slide));
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--body);
+  font-weight: 500;
+  margin: 0;
+  padding: 24px;
+  background: var(--slide);
+  color: var(--hema);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* positioning anchor for .langtoggle on whichever screen is showing —
+   .intro also sets its own (narrower) anchor when present */
+#app { position: relative; }
+
+/* IBM Plex Mono has no Arabic glyph coverage — it's a Latin/Greek/
+   Cyrillic-only face. Every element below was styled with var(--mono)
+   for its EN "data label" look, but in Arabic mode its content is
+   Arabic WORDS (badges, sort labels, stat labels…), not numbers — so
+   the browser was silently falling back to whatever generic font the
+   OS provides, not the type system actually chosen for this app. That
+   fallback is what read as small/thin/"annoying to look at". Switching
+   these to the Arabic body font (which the type system already loads
+   and sizes for exactly this) plus a small size bump — Arabic
+   conventionally needs to sit ~1px larger than paired Latin text to
+   read at equivalent weight — fixes both at once. Pure-numeric/time
+   elements (.hour, .block .bt, rail item codes, lab codes…) are
+   untouched: they're correct in mono in both languages. */
+html[lang="ar"] .appbar .sub,
+html[lang="ar"] .introyear,
+html[lang="ar"] .introsub,
+html[lang="ar"] .rail .item .rowstats,
+html[lang="ar"] .stats,
+html[lang="ar"] .popovermeta,
+html[lang="ar"] .popoverlab {
+  font-family: var(--body); font-size: 14px;
+}
+html[lang="ar"] .pickbadge,
+html[lang="ar"] .rail .item .badge {
+  font-family: var(--body); font-size: 11px;
+}
+html[lang="ar"] .block .labtag-full,
+html[lang="ar"] .block .labtag-short,
+html[lang="ar"] .void .vd-full,
+html[lang="ar"] .void .vd-short {
+  font-family: var(--body);
+}
+@media print {
+  html[lang="ar"] .printmeta,
+  html[lang="ar"] .printtable {
+    font-family: var(--body);
+  }
+}
+
+/* ---- app bar ---- */
+.appbar { margin-bottom: 16px; }
+.appbar h1 {
+  font-family: var(--display);
+  font-weight: 700; font-size: 26px; letter-spacing: -0.01em;
+  margin: 0 0 2px;
+}
+.appbar .sub { font-family: var(--mono); font-size: 13px; color: var(--hema-lo); }
+
+/* explicit way back to the intro, alongside the browser back button */
+.hometab {
+  display: flex; align-items: center; gap: 6px;
+  background: none; border: none; cursor: pointer; padding: 0;
+  margin-bottom: 10px;
+  font-family: var(--body); font-size: 13px; color: var(--hema-lo);
+}
+.hometab:hover { color: var(--hema); }
+[dir="rtl"] .hometab span { display: inline-block; transform: scaleX(-1); }
+
+/* §21 mobile-only detail header (back arrow + sticky combo id) — hidden
+   above the breakpoint so it never appears in the desktop layout. */
+.detailheader { display: none; }
+
+/* ---- intro screen (§13) ---- */
+.intro { max-width: 720px; margin-inline: auto; position: relative; }
+
+.langtoggle {
+  position: absolute; inset-block-start: 0; inset-inline-end: 0;
+  display: flex; gap: 8px; align-items: center;
+  font-family: var(--body); font-size: 14px;
+}
+.langtoggle button {
+  background: none; border: none; cursor: pointer; padding: 4px;
+  font-family: inherit; font-size: inherit; color: var(--hema-lo);
+}
+.langtoggle button[aria-pressed="true"] { color: var(--hema); font-weight: 700; }
+.langtoggle .langsep { color: var(--rule); }
+
+.introhead { text-align: center; padding-block: 40px 8px; }
+.intrologo { display: block; max-width: 220px; width: 100%; height: auto; margin: 0 auto 20px; }
+.introyear {
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--hema-lo);
+}
+.introhead h1 { font-family: var(--display); font-size: 32px; font-weight: 700; margin: 8px 0 2px; }
+.introterm { font-family: var(--body); font-size: 15px; color: var(--hema-lo); margin-bottom: 8px; }
+.introsub { font-family: var(--mono); font-size: 13px; color: var(--hema-lo); }
+
+.browseall {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; margin: 22px 0 10px; padding: 14px 18px;
+  font-family: var(--body); font-size: 16px; cursor: pointer;
+  background: var(--eosin); color: #fff; border: none; border-radius: 4px;
+}
+.browseall .arrow { display: inline-block; }
+[dir="rtl"] .browseall .arrow { transform: scaleX(-1); }
+
+.startfrom {
+  text-align: center; font-family: var(--body); font-size: 14px;
+  color: var(--hema-lo); margin: 24px 0 12px;
+}
+
+.pickgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pickcard {
+  border: 1px solid var(--rule); border-radius: 4px; padding: 12px;
+  cursor: pointer; background: var(--slide); text-align: start;
+  transition: border-color 0.12s ease;
+}
+.pickcard:hover { border-color: var(--eosin); }
+.pickbadge {
+  display: block; font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--hema-lo); margin-bottom: 6px;
+}
+.pickcode { display: block; font-family: var(--mono); font-size: 17px; font-weight: 700; color: var(--hema); }
+.pickfact { display: block; font-family: var(--body); font-size: 13px; color: var(--hema-lo); margin-top: 4px; }
+.pickmore { display: block; font-family: var(--body); font-size: 11px; color: var(--hema-lo); opacity: 0.7; margin-top: 2px; }
+
+.introfooter {
+  text-align: center; font-family: var(--body); font-size: 12px;
+  color: var(--hema-lo); margin-top: 28px; line-height: 1.5;
+}
+.disclaimer {
+  text-align: center; font-family: var(--body); font-size: 11px;
+  color: var(--hema-lo); opacity: 0.75; margin-top: 10px; line-height: 1.5;
+  max-width: 480px; margin-inline: auto;
+}
+
+.pickcard:focus-visible, .browseall:focus-visible, .langtoggle button:focus-visible {
+  outline: 2px solid var(--eosin); outline-offset: 1px;
+}
+
+@media (max-width: 640px) {
+  .pickgrid { grid-template-columns: repeat(2, 1fr); }
+  .langtoggle { position: static; justify-content: center; margin-bottom: 12px; }
+}
+
+/* ---- view toggle ---- */
+.viewtoggle { display: inline-flex; gap: 0; margin: 4px 0 18px; }
+.viewtoggle button {
+  font-family: var(--body); font-size: 14px;
+  padding: 7px 16px; cursor: pointer;
+  background: var(--slide); color: var(--hema);
+  border: 1px solid var(--rule);
+}
+.viewtoggle button:first-child { border-start-start-radius: 4px; border-end-start-radius: 4px; }
+.viewtoggle button:last-child  { border-start-end-radius: 4px; border-end-end-radius: 4px; border-inline-start: none; }
+.viewtoggle button[aria-pressed="true"] {
+  background: var(--eosin); color: #fff; border-color: var(--eosin);
+}
+
+/* ---- sort control (§16) — segmented, all five visible ---- */
+.sortctl { display: flex; flex-wrap: wrap; gap: 0; margin-bottom: 10px; }
+.sortctl button {
+  font-family: var(--body); font-size: 12px;
+  padding: 5px 9px; cursor: pointer;
+  background: var(--slide); color: var(--hema-lo);
+  border: 1px solid var(--rule);
+  border-inline-start: none;
+}
+.sortctl button:first-child { border-inline-start: 1px solid var(--rule); border-start-start-radius: 4px; border-end-start-radius: 4px; }
+.sortctl button:last-child { border-start-end-radius: 4px; border-end-end-radius: 4px; }
+.sortctl button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--eosin) 12%, var(--slide));
+  color: var(--eosin); font-weight: 600;
+}
+
+/* ---- two-pane layout ---- */
+.layout { display: flex; gap: 24px; align-items: flex-start; }
+.rail { flex: 0 0 210px; }
+.canvas { flex: 1 1 auto; min-width: 0; }
+
+/* ---- option rail ---- */
+.rail ul { list-style: none; margin: 0; padding: 0; }
+.rail .item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 8px 10px; margin-bottom: 5px;
+  border: 1px solid var(--rule); border-radius: 4px;
+  cursor: pointer; background: var(--slide);
+  transition: border-color 0.12s ease;
+}
+.rail .item:hover { border-color: var(--hema-lo); }
+.rail .item.selected {
+  border-color: var(--eosin);
+  background: color-mix(in srgb, var(--eosin) 8%, var(--slide));
+}
+.rail .item .code { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+/* §21 — mobile list rows also show waiting + longest day; desktop's
+   rail stays compact (code + badges only), same as before. */
+.rail .item .rowstats {
+  display: none; gap: 4px 14px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 12px; color: var(--hema-lo);
+}
+.rail .item .rowstats b { font-weight: 700; color: var(--hema); }
+/* §15 — a badge is a word LABEL: mono, uppercase, letterspaced, in the
+   course-neutral ink. Never a chip, pill, or coloured tag. */
+.rail .item .badges { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.rail .item .badge {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--hema);
+}
+.rail .item .badge.status { color: var(--hema-lo); }
+
+/* the clashing tier — viewable, not selectable-for-PDF, still clickable */
+.rail .item.clash { border-style: dashed; }
+.rail .item.clash .badge.status { color: var(--clash); }
+.rail .item.clash.selected {
+  border-color: var(--clash); border-style: solid;
+  background: color-mix(in srgb, var(--clash) 8%, var(--slide));
+}
+
+.rail .railhead {
+  font-family: var(--body); font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--hema-lo); margin: 18px 0 6px;
+}
+
+/* ---- week grid ---- */
+/* The grid mirrors with the page: Saturday leftmost in English,
+   rightmost in Arabic. Direction is simply inherited from <html dir>
+   (no override here) — every child position uses logical inset-inline
+   properties, so the whole day axis, including the time column,
+   flips together automatically. */
+.grid { display: flex; gap: 0; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.daycol { flex: 1 1 0; min-width: 0; border-inline-start: 1px solid var(--rule); }
+.daycol:first-child { border-inline-start: none; }
+.timecol { flex: 0 0 52px; }
+.dayhead {
+  height: 30px; line-height: 30px; text-align: center;
+  font-family: var(--display); font-weight: 600; font-size: 14px;
+  color: var(--hema); border-bottom: 1px solid var(--rule);
+}
+.daybody { position: relative; height: 560px; }
+
+.hour {
+  position: absolute; inset-inline-start: 6px; transform: translateY(-50%);
+  font-family: var(--mono); font-size: 11px; color: var(--hema-lo);
+}
+/* §21 — full/short label pairs: desktop shows the full form, mobile
+   switches to the compact one. Both always render; only display: toggles,
+   so nothing needs recomputing across the 768px breakpoint on resize. */
+.hour-short { display: none; }
+/* faint hour gridlines across the day columns */
+.daycol:not(.timecol) .daybody {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--slide) 0, var(--slide) calc(100% / 9 - 1px),
+    var(--rule) calc(100% / 9 - 1px), var(--rule) calc(100% / 9));
+}
+
+/* class blocks — one laboratory stain per course (§17) */
+.block {
+  position: absolute; inset-inline: 3px;
+  border: 1px solid color-mix(in srgb, var(--c, var(--hema)) 28%, var(--slide));
+  border-inline-start: 3px solid var(--c, var(--hema));
+  border-radius: 3px; overflow: hidden;
+  padding: 3px 5px; line-height: 1.2;
+  background: color-mix(in srgb, var(--c, var(--hema)) 12%, var(--slide));
+  color: var(--hema);
+  z-index: 2; opacity: var(--bo, 1);
+  transition: border-color 0.12s ease;
+}
+.block .bc-full, .block .bc-short { display: block; font-family: var(--body); font-weight: 700; font-size: 12px; }
+.block .bc-short { display: none; }
+.block .bt { display: block; font-family: var(--mono); font-size: 11px; color: var(--hema-lo); }
+.block .br { display: block; font-family: var(--mono); font-size: 11px; color: var(--hema-lo); }
+.block .br.unknown { color: var(--eosin); }
+.block .br.assumed { text-decoration: underline dotted; text-underline-offset: 2px; }
+
+[data-course="PH"] { --c: var(--c-ph); }
+[data-course="MB"] { --c: var(--c-mb); }
+[data-course="BC"] { --c: var(--c-bc); }
+[data-course="MC"] { --c: var(--c-mc); }
+[data-course="PA"] { --c: var(--c-pa); }
+[data-course="PM"] { --c: var(--c-pm); }
+
+/* §18 — a lab is a different MATERIAL, not a different colour: it keeps
+   its course hue but reads as texture, so the Full/Lecture toggle stays
+   legible no matter which stain the course carries. */
+.block.lab {
+  background:
+    repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--c, var(--hema)) 32%, transparent) 0 3px,
+      transparent 3px 6px),
+    color-mix(in srgb, var(--c, var(--hema)) 12%, var(--slide));
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--c, var(--hema)) 45%, var(--slide));
+  border-inline-start: 3px solid var(--c, var(--hema));
+}
+.block .labtag-full, .block .labtag-short {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.03em;
+  color: var(--hema-lo); opacity: 0.85;
+}
+.block .labtag-short { display: none; }
+.block .labcode {
+  position: absolute; inset-inline-end: 4px; bottom: 2px;
+  font-family: var(--mono); font-size: 11px; color: var(--hema-lo); opacity: 0.7;
+}
+/* Lecture week: hatched material fades — the removal itself is the
+   signal — and drops below the void that expands over it. */
+.block.faded { --bo: 0.15; z-index: 0; }
+
+/* a genuine clash — always red, regardless of course, and always
+   readable above both voids and other blocks */
+.block.clash {
+  --c: var(--clash);
+  background:
+    repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--clash) 32%, transparent) 0 3px,
+      transparent 3px 6px),
+    color-mix(in srgb, var(--clash) 14%, var(--slide));
+  border-style: dashed;
+  border-color: var(--clash);
+  border-inline-start: 3px solid var(--clash);
+  z-index: 3;
+}
+
+/* the signature — dead time as drawn material */
+.void {
+  position: absolute; inset-inline: 3px;
+  background: var(--void); border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1;
+}
+.void .vd-full, .void .vd-short { font-family: var(--mono); font-size: 11px; color: var(--hema-lo); }
+.void .vd-short { display: none; }
+
+/* ---- save as PDF (§9) — above the stats strip on every screen ---- */
+.printonly { display: none; }
+.savepdf {
+  display: block; width: 100%; margin-top: 16px; padding: 10px 16px;
+  font-family: var(--body); font-size: 14px; font-weight: 600; cursor: pointer;
+  background: var(--slide); color: var(--hema);
+  border: 1px solid var(--hema); border-radius: 4px;
+}
+.savepdf:hover { background: color-mix(in srgb, var(--hema) 6%, var(--slide)); }
+.savepdf-hint { display: none; text-align: center; font-size: 11px; color: var(--hema-lo); margin-top: 4px; }
+
+/* ---- stat strip ---- */
+.stats {
+  margin-top: 16px; padding: 12px 2px; border-top: 1px solid var(--rule);
+  display: flex; flex-wrap: wrap; gap: 6px 22px;
+  font-family: var(--mono); font-size: 13px; color: var(--hema-lo);
+}
+.stats b { font-weight: 700; color: var(--hema); }
+
+/* ---- nudge + chips ---- */
+.nudge {
+  margin-top: 14px; padding: 12px 14px; border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--eosin) 45%, var(--slide));
+  background: color-mix(in srgb, var(--eosin) 6%, var(--slide));
+  font-family: var(--body); font-size: 14px; line-height: 1.45;
+}
+.nudge b { color: var(--eosin); }
+.nudge div { margin: 4px 0 8px; }
+.nudge button {
+  font-family: var(--body); font-size: 14px; cursor: pointer;
+  padding: 6px 14px; border-radius: 4px;
+  background: var(--eosin); color: #fff; border: none;
+}
+.twinchip, .shapechip {
+  margin-top: 10px; font-family: var(--body); font-size: 13px;
+  color: var(--hema-lo); line-height: 1.4;
+}
+
+/* ---- clash notice (§14) — tied visually to the red hatched blocks
+   it explains ---- */
+.clashnotice {
+  margin-bottom: 14px; padding: 12px 14px; border-radius: 4px;
+  border: 1px solid var(--clash);
+  background: color-mix(in srgb, var(--clash) 8%, var(--slide));
+  font-family: var(--body); font-size: 14px; line-height: 1.5;
+}
+.clashnotice b { color: var(--clash); }
+.clashnotice div { margin-top: 6px; }
+
+/* validation banner */
+.banner {
+  border: 1px solid var(--eosin); border-radius: 4px;
+  background: color-mix(in srgb, var(--eosin) 10%, var(--slide));
+  padding: 12px 14px; margin-bottom: 18px; font-size: 14px;
+}
+
+/* ---- selection moment: stagger top-left → bottom-right, then
+   voids fade up behind. Selection only; reduced-motion drops it. ---- */
+@keyframes blockIn {
+  from { opacity: 0; transform: translate(-6px, -6px); }
+  to   { opacity: var(--bo, 1); transform: none; }
+}
+@keyframes voidIn { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .grid.animate .block { animation: blockIn 0.18s ease both; animation-delay: var(--d, 0ms); }
+  .grid.animate .void  { animation: voidIn 0.2s ease both;  animation-delay: var(--d, 0ms); }
+}
+
+/* ---- §20: the two transition moments ----
+   Intro → sections: the outgoing screen is snapshotted into a fixed
+   "ghost" that lifts and fades over 260ms while the real sections
+   screen (already mid-stagger via .grid.animate above) is visible
+   underneath the instant the ghost is created — one continuous
+   movement, not two queued. Back button reverses it (the ghost sinks
+   instead of lifting). JS only ever creates this ghost from an
+   explicit click or a popstate — never on initial load/refresh, so a
+   fresh page-view is always instant, exactly as required. */
+.screen-ghost {
+  position: fixed; inset: 0; overflow: auto;
+  background: var(--slide); padding: 24px; z-index: 50;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .screen-ghost { transition: opacity 260ms ease, transform 260ms ease; }
+  .screen-ghost.leaving { opacity: 0; transform: translateY(-16px); }
+  .screen-ghost.reverse.leaving { transform: translateY(16px); }
+}
+
+/* Quick-pick card → sections: same transition, but the chosen combo's
+   blocks (the whole grid IS that combo) land last and hold a 1px eosin
+   outline for 600ms so the eye lands on the answer. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes gridLandOutline {
+    0%, 100% { outline-color: transparent; }
+    15%, 88% { outline-color: var(--eosin); }
+  }
+  .grid.quickpick-land {
+    outline: 1px solid transparent; outline-offset: 2px;
+    animation: gridLandOutline 900ms ease-out;
+    animation-delay: 350ms;   /* roughly when the block stagger settles */
+  }
+}
+
+/* ================================================================
+   §21 — MOBILE LAYOUT (<768px). Desktop above this breakpoint is
+   untouched; everything here is additive/overriding only inside
+   this media query. List and detail become two screens sharing one
+   DOM tree, toggled by [data-mobile-screen] on .sectionsview.
+   ================================================================ */
+@media (max-width: 767px) {
+  body { padding: 10px; }
+
+  /* ---- list <-> detail screen toggle ---- */
+  .sectionsview[data-mobile-screen="detail"] .appbar,
+  .sectionsview[data-mobile-screen="detail"] > .langtoggle {
+    display: none;
+  }
+  .sectionsview[data-mobile-screen="detail"] .detailheader { display: flex; }
+  .sectionsview[data-mobile-screen="list"] .rail { display: block; }
+  .sectionsview[data-mobile-screen="list"] .canvas { display: none; }
+  .sectionsview[data-mobile-screen="detail"] .rail { display: none; }
+  .sectionsview[data-mobile-screen="detail"] .canvas { display: block; }
+  .layout { display: block; }
+  .rail, .canvas { width: 100%; }
+
+  /* ---- detail header: back arrow + sticky combo id ---- */
+  .detailheader {
+    position: sticky; inset-block-start: 0; z-index: 10;
+    align-items: center; gap: 10px; padding-block: 8px;
+    background: var(--slide); border-bottom: 1px solid var(--rule);
+    margin-bottom: 8px;
+  }
+  .backarrow {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px; flex: 0 0 auto;
+    background: none; border: none; cursor: pointer;
+    font-size: 20px; color: var(--hema);
+  }
+  [dir="rtl"] .backarrow span { display: inline-block; transform: scaleX(-1); }
+  .detailheader-code { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--hema); }
+
+  /* ---- Full/Lecture toggle: full-width two-up, sticky under the header ---- */
+  .viewtoggle {
+    display: flex; width: 100%; margin: 0 0 10px;
+    position: sticky; inset-block-start: 0; z-index: 9;
+    background: var(--slide);
+  }
+  .sectionsview[data-mobile-screen="detail"] .viewtoggle { inset-block-start: 61px; }
+  .viewtoggle button { flex: 1 1 0; min-height: 44px; }
+
+  /* ---- sort: horizontally scrollable chip row, same 5 keys/defaults ---- */
+  .sortctl {
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    gap: 6px; padding-bottom: 2px;
+  }
+  .sortctl button, .sortctl button:first-child, .sortctl button:last-child {
+    flex: 0 0 auto; min-height: 44px;
+    border-radius: 999px; border: 1px solid var(--rule); border-inline-start: 1px solid var(--rule);
+  }
+
+  /* ---- option rows: full-width, stats visible, 44px+ tall ---- */
+  .rail ul { display: block; }
+  .rail .item { width: 100%; min-height: 44px; margin-bottom: 8px; padding: 12px; }
+  .rail .item .rowstats { display: flex; }
+
+  /* ---- grid: two-letter codes, no room text, hour-only axis ---- */
+  .timecol { flex-basis: 26px; }
+  .hour-full { display: none; }
+  .hour-short { display: block; }
+  .block { padding: 2px 3px; }             /* buy back room for narrow clash lanes */
+  .block .bc-full { display: none; }
+  .block .bc-short { display: block; font-size: 11px; }   /* §21 explicitly permits 11px here */
+  .block .br { display: none; }
+  .void .vd-full { display: none; }
+  .void .vd-short { display: block; }
+  .void.voidshort .vd-short { display: none; }
+  .block .labtag-full { display: none; }
+  .block .labtag-short { display: block; }
+
+  /* invisible 44px minimum tap target — never grows the visual block */
+  .block::after {
+    content: ""; position: absolute; inset-inline: 0;
+    block-size: max(100%, 44px); inset-block-start: 50%; transform: translateY(-50%);
+  }
+
+  /* ---- stats strip: sticky to the bottom of the week screen ---- */
+  .stats {
+    position: sticky; inset-block-end: 0; z-index: 9;
+    background: var(--slide); border-top: 1px solid var(--rule);
+    margin-top: 10px; padding: 10px 6px;
+    flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; gap: 14px;
+  }
+
+  /* ---- touch targets elsewhere ---- */
+  .langtoggle button { min-height: 44px; padding: 10px; }
+  .pickcard { min-height: 44px; }
+  .browseall { min-height: 44px; }
+  .hometab { min-height: 44px; }
+  .savepdf { min-height: 44px; }
+  .savepdf-hint { display: block; }   /* §21 — landscape hint, mobile only */
+
+  /* ---- block detail popover — this is also where the room warnings
+     become reachable by tap (§21 touch fix) ---- */
+  .popoverscrim {
+    position: fixed; inset: 0; z-index: 60;
+    background: color-mix(in srgb, var(--hema) 45%, transparent);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .blockpopover {
+    position: relative; width: 100%; max-width: 480px;
+    background: var(--slide); border-radius: 4px 4px 0 0;
+    padding: 18px 20px 24px; border-block-start: 1px solid var(--rule);
+  }
+  .popoverclose {
+    position: absolute; inset-block-start: 8px; inset-inline-end: 8px;
+    min-width: 44px; min-height: 44px;
+    background: none; border: none; font-size: 22px; cursor: pointer; color: var(--hema-lo);
+  }
+  .popoverbc { font-family: var(--display); font-weight: 700; font-size: 17px; margin-bottom: 4px; }
+  .popovermeta { font-family: var(--mono); font-size: 13px; color: var(--hema-lo); margin-bottom: 10px; }
+  .popoverroom { font-family: var(--mono); font-size: 14px; margin-bottom: 2px; }
+  .popoverwarn { font-family: var(--body); font-size: 13px; color: var(--eosin); margin-top: 4px; }
+  .popoverlab { font-family: var(--mono); font-size: 13px; color: var(--hema-lo); margin-top: 8px; }
+
+  /* ---- list <-> detail slide transition ---- */
+  .mobile-slide-ghost {
+    position: fixed; inset: 0; overflow: auto;
+    background: var(--slide); padding: 10px; z-index: 50;
+  }
+}
+
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
+  /* Direction follows the PAGE's own rules (unlike the day grid, which
+     never mirrors) — list exits toward inline-start, week enters from
+     inline-end; physical translateX must match the current <html dir>. */
+  .mobile-slide-ghost { transition: transform 260ms ease; }
+  [dir="ltr"] .mobile-slide-ghost.leaving { transform: translateX(-100%); }
+  [dir="ltr"] .mobile-slide-ghost.reverse.leaving { transform: translateX(100%); }
+  [dir="rtl"] .mobile-slide-ghost.leaving { transform: translateX(100%); }
+  [dir="rtl"] .mobile-slide-ghost.reverse.leaving { transform: translateX(-100%); }
+
+  @keyframes slideInFromEnd   { from { transform: translateX(100%); }  to { transform: translateX(0); } }
+  @keyframes slideInFromStart { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+  [dir="ltr"] .sectionsview.slide-in-detail { animation: slideInFromEnd 260ms ease; }
+  [dir="ltr"] .sectionsview.slide-in-list   { animation: slideInFromStart 260ms ease; }
+  [dir="rtl"] .sectionsview.slide-in-detail { animation: slideInFromStart 260ms ease; }
+  [dir="rtl"] .sectionsview.slide-in-list   { animation: slideInFromEnd 260ms ease; }
+}
+
+/* ================================================================
+   §9 (original spec) — print stylesheet + PDF export.
+   window.print() only; no jsPDF/html2canvas (they rasterize and
+   wreck Arabic shaping). Single landscape page: chosen combo header,
+   week grid, schedule table, daily totals, footer. Everything else —
+   rail, toggles, nudges, badges — hidden.
+   ================================================================ */
+@page { size: landscape; margin: 10mm; }
+
+@media print {
+  html, body { background: #fff; }
+  body { padding: 0; }
+  * { box-shadow: none !important; }
+
+  .langtoggle, .hometab, .appbar, .detailheader, .viewtoggle,
+  .rail, .banner, .clashnotice, .stats, .nudge, .twinchip, .shapechip,
+  .savepdf, .savepdf-hint,
+  .screen-ghost, .mobile-slide-ghost, .popoverscrim {
+    display: none !important;
+  }
+
+  .layout { display: block; }
+  .canvas { width: 100%; }
+  .printonly { display: block; }
+
+  /* force full-content grid regardless of the originating viewport —
+     printed output is always the "desktop" reading, never the
+     mobile short forms, and always shows room text */
+  .hour-full, .bc-full, .labtag-full, .vd-full, .block .br { display: block !important; }
+  .hour-short, .bc-short, .labtag-short, .vd-short { display: none !important; }
+  .timecol { flex-basis: 52px !important; }
+  .grid { break-inside: avoid; page-break-inside: avoid; }
+  .daybody { height: 380px; }
+  .block, .void { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+  .printheader { margin-bottom: 10px; }
+  .printtitle {
+    font-family: var(--display); font-weight: 700; font-size: 20px; color: #000;
+  }
+  .printmeta { font-family: var(--mono); font-size: 12px; color: #333; }
+
+  .printtable {
+    width: 100%; border-collapse: collapse; margin-top: 14px;
+    font-family: var(--mono); font-size: 11px; color: #000;
+  }
+  .printtable th, .printtable td {
+    border: 1px solid #999; padding: 3px 7px; text-align: start;
+  }
+  .printtable thead th { background: #eee; font-weight: 700; }
+  .printtable .printtotal { font-weight: 700; }
+  .printtable + .printtable { margin-top: 10px; }
+
+  .printfooter { margin-top: 10px; font-size: 10px; color: #333; line-height: 1.5; }
+  .printfooter div + div { margin-top: 3px; }
+}
