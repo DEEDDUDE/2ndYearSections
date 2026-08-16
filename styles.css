@@ -131,7 +131,10 @@ html[lang="ar"] .void .vd-short {
 .langtoggle .langsep { color: var(--rule); }
 
 .introhead { text-align: center; padding-block: 40px 8px; }
-.intrologo { display: block; max-width: 220px; width: 100%; height: auto; margin: 0 auto 20px; }
+.universityname {
+  font-family: var(--display); font-weight: 600; font-size: 16px;
+  color: var(--hema); margin-bottom: 20px;
+}
 .introyear {
   font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--hema-lo);

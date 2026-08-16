@@ -237,7 +237,7 @@ export const STRINGS = {
     typeLab: "Lab",
     backToList: "Back to list",
     backToHome: "Back to home",
-    universityAlt: "Al-Quds University",
+    universityName: "Al-Quds University",
     close: "Close",
     roomUnknown: "Room not published yet",
     roomAssumed: "Room assumed for both days — confirm with registration",
@@ -300,7 +300,7 @@ export const STRINGS = {
     typeLab: "مختبر",
     backToList: "الرجوع إلى القائمة",
     backToHome: "الرجوع إلى الرئيسية",
-    universityAlt: "جامعة القدس",
+    universityName: "جامعة القدس",
     close: "إغلاق",
     roomUnknown: "القاعة غير معلنة بعد",
     roomAssumed: "القاعة مفترضة لليومين — تأكد من التسجيل",
@@ -818,7 +818,7 @@ export function introHTML(combos, lang = "en") {
   return `<div class="intro">
     ${langToggleHTML(lang)}
     <div class="introhead">
-      <img class="intrologo" src="AQU Logo Eng..png" alt="${esc(S.universityAlt)}">
+      <div class="universityname">${esc(S.universityName)}</div>
       <div class="introyear">${esc(SETTINGS.year[lang])}</div>
       <h1>${esc(S.offeredSections)}</h1>
       <div class="introterm">${esc(SETTINGS.term[lang])}</div>
