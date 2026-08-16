@@ -153,6 +153,25 @@ export const GRID_END   = toMin(SETTINGS.gridEnd);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+// Times, time ranges, room codes, section numbers and lab codes are LTR
+// data that can sit inside RTL Arabic text. Without isolation the bidi
+// algorithm can visually reverse them ("09:00–10:50" rendering as
+// "10:50–09:00", "ST215" as "215ST") — this is a real, separate bug from
+// which SCRIPT is used, so it's applied unconditionally in both
+// languages: harmless in EN's own LTR context, one code path either way.
+// Content must already be HTML-escaped by the caller before wrapping.
+// Exported since index.html builds a couple of these spans directly too
+// (the mobile detail header's combo code).
+export const ltr = (html) => `<span class="ltr-data">${html}</span>`;
+
+// Same fix, plain-text form — for strings that end up as a title/aria
+// attribute or get esc()'d as a whole by their caller, where a <span>
+// would either be inert (attributes don't parse markup) or get mangled
+// into literal "&lt;span&gt;" text. U+2066/U+2069 (LRI/PDI) are invisible
+// formatting characters, not in esc()'s escaped set, so they survive
+// either path and still force LTR reading order.
+const ltrText = (s) => `⁦${s}⁩`;
+
 // All meetings of a combo, lectures + labs, each already tagged .kind.
 const blocksFor = (combo) => [...combo.lectures, ...combo.labs];
 
@@ -162,7 +181,7 @@ const blocksFor = (combo) => [...combo.lectures, ...combo.labs];
 // codes, combo ids, and durations. `lang` stays in these signatures so
 // call sites are uniform; it just no longer selects a digit script.
 export const num = (n, lang) => String(n);
-const cid = (id, lang) => id;   // e.g. combo id "5-51"
+const cid = (id, lang) => ltr(id);   // e.g. combo id "5-51" — section-labCode, LTR data
 
 // Durations: "6h 50m" in EN, "6س 10د" in AR — Arabic unit letters
 // (hour/minute), Western digits. "Hours and minutes read faster than a
@@ -267,6 +286,7 @@ export const STRINGS = {
     // §9 (original spec) — print stylesheet + PDF export
     saveAsPdf: "Save as PDF",
     landscapeHint: "Best saved in landscape",
+    printDialogHint: "Turn off \"Headers and footers\" in the print dialog for a clean page",
     printSectionLabs: (section, labCode) => `Section ${section} · Labs ${labCode}`,
     printGenerated: (date) => `Generated ${date}`,
     printDay: "Day", printStart: "Start", printEnd: "End", printDuration: "Duration",
@@ -278,7 +298,7 @@ export const STRINGS = {
   },
   ar: {
     appTitle: "اختيار الشعبة",
-    subtitle: (ch, courseN, validN) => `${ch} ساعة معتمدة · ${courseN} مواد · ${validN} خيار متاح`,
+    subtitle: (ch, courseN, validN) => `${ch} ساعة معتمدة · ${courseN} مواد · ${validN} خياراً متاحاً`,
     fullWeek: "أسبوع كامل",
     lectureWeek: "أسبوع بدون مختبر",
     sort: { section: "الشعبة", deadMin: "وقت الانتظار", worstDayMin: "أقصر يوم",
@@ -332,6 +352,7 @@ export const STRINGS = {
     // original Arabic-Indic example, "الشعبة ٢ · مختبرات ٢١").
     saveAsPdf: "حفظ كملف PDF",
     landscapeHint: "يُفضّل الحفظ بالوضع الأفقي",
+    printDialogHint: "أوقف «الرؤوس والتذييلات» في نافذة الطباعة للحصول على صفحة نظيفة",
     printSectionLabs: (section, labCode) => `الشعبة ${section} · مختبرات ${labCode}`,
     printGenerated: (date) => `أُنشئ في ${date}`,
     printDay: "اليوم", printStart: "البداية", printEnd: "النهاية", printDuration: "المدة",
@@ -367,7 +388,7 @@ export function gridHTML(combo, view = "withLabs", animate = false, lang = "en")
     const hh = String(Math.floor(m / 60)).padStart(2, "0");
     const shift = m === GRID_START ? "0%" : m === GRID_END ? "-100%" : "-50%";
     hours += `<div class="hour" style="top:${pct(m)}%;transform:translateY(${shift})">
-                <span class="hour-full">${fmt(m)}</span><span class="hour-short">${hh}</span>
+                <span class="hour-full">${ltr(fmt(m))}</span><span class="hour-short">${ltr(hh)}</span>
               </div>`;
   }
 
@@ -392,8 +413,8 @@ export function gridHTML(combo, view = "withLabs", animate = false, lang = "en")
       // §21 — mobile drops to a short-form label ("2h50"), and hides the
       // label entirely under 60min (desktop always shows the full form).
       voids += `<div class="void${gap < 60 ? " voidshort" : ""}" style="top:${top}%;height:${h}%;--d:${delay}ms">
-                  <span class="vd-full">${durText(gap, lang)}</span>
-                  <span class="vd-short">${durTextShort(gap, lang)}</span>
+                  <span class="vd-full">${ltr(durText(gap, lang))}</span>
+                  <span class="vd-short">${ltr(durTextShort(gap, lang))}</span>
                 </div>`;
     }
 
@@ -410,15 +431,15 @@ export function gridHTML(combo, view = "withLabs", animate = false, lang = "en")
         : lane === 1 ? "inset-inline:52% 3px;" : "";
       const delay = Math.round(ci * 25 + (top / 100) * 200);  // top-left → bottom-right
       const room = b.room === null
-        ? `<span class="br unknown" title="${esc(S.roomUnknown)}">—</span>`
+        ? `<span class="br unknown" title="${esc(S.roomUnknown)}">${ltr("—")}</span>`
         : `<span class="br${b.roomUncertain ? " assumed" : ""}"${
             b.roomUncertain ? ` title="${esc(S.roomAssumed)}"` : ""
-          }>${esc(b.room)}</span>`;
+          }>${ltr(esc(b.room))}</span>`;
       // A lab is a different material: hatch fill + dashed outline (in CSS)
       // plus a mono micro-label and the lab code, so it survives greyscale.
       // §21 — mobile shrinks "LAB · not weekly" to just "LAB".
       const labMeta = b.kind === "lab"
-        ? `<span class="labtag-full">${esc(S.labTag)}</span><span class="labtag-short">${esc(S.labTagShort)}</span><span class="labcode">${num(b.labCode, lang)}</span>`
+        ? `<span class="labtag-full">${esc(S.labTag)}</span><span class="labtag-short">${esc(S.labTagShort)}</span><span class="labcode">${ltr(num(b.labCode, lang))}</span>`
         : "";
       // §21 — data-* carries everything the tap popover needs (room state
       // included, since that's how touch reaches the hover-only warnings).
@@ -429,7 +450,7 @@ export function gridHTML(combo, view = "withLabs", animate = false, lang = "en")
                    style="top:${top}%;height:${h}%;--d:${delay}ms;${laneStyle}">
                 <span class="bc-full">${esc(courseName(b.course, lang))}</span>
                 <span class="bc-short">${esc(b.course)}</span>
-                <span class="bt">${fmt(b.start)}–${fmt(b.end)}</span>
+                <span class="bt">${ltr(`${fmt(b.start)}–${fmt(b.end)}`)}</span>
                 ${room}
                 ${labMeta}
               </div>`;
@@ -460,14 +481,14 @@ export function blockPopoverHTML(info, lang) {
   const name = courseName(info.course, lang);
   const type = info.kind === "lab" ? S.typeLab : S.typeLecture;
   const day = dayFull(info.day, lang);
-  const time = `${fmt(+info.start)}–${fmt(+info.end)}`;
+  const time = ltr(`${fmt(+info.start)}–${fmt(+info.end)}`);
   const roomBlock = info.room === ""
     ? `<div class="popoverwarn">${esc(S.roomUnknown)}</div>`
     : info.roomUncertain === "1"
-      ? `<div class="popoverroom">${esc(info.room)}</div><div class="popoverwarn">${esc(S.roomAssumed)}</div>`
-      : `<div class="popoverroom">${esc(info.room)}</div>`;
+      ? `<div class="popoverroom">${ltr(esc(info.room))}</div><div class="popoverwarn">${esc(S.roomAssumed)}</div>`
+      : `<div class="popoverroom">${ltr(esc(info.room))}</div>`;
   const labLine = info.kind === "lab"
-    ? `<div class="popoverlab">${esc(S.labTag)} · ${num(info.labCode, lang)}</div>` : "";
+    ? `<div class="popoverlab">${esc(S.labTag)} · ${ltr(num(info.labCode, lang))}</div>` : "";
   return `<button class="popoverclose" data-popover-close aria-label="${esc(S.close)}">×</button>
     <div class="popoverbc">${esc(name)}</div>
     <div class="popovermeta">${esc(type)} · ${esc(day)} ${time}</div>
@@ -493,13 +514,16 @@ export function conflictSentence(combo, lang = "en") {
   return [...groups.values()].map(({ x, y, days }) => {
     const cx = courseName(x.course, lang);
     const cy = courseName(y.course, lang);
+    // conflictSentence's result is used both as a plain-text title
+    // attribute and esc()'d-as-a-whole elsewhere, so times use ltrText()
+    // (invisible isolate characters) here, not the <span>-based ltr().
     if (days.length > 1) {
-      return `${cx} (${fmt(x.start)}–${fmt(x.end)}) ${S.overlaps} ${cy} (${fmt(y.start)}–${fmt(y.end)}) ${S.on} ${joinDays(days, lang)}.`;
+      return `${cx} (${ltrText(`${fmt(x.start)}–${fmt(x.end)}`)}) ${S.overlaps} ${cy} (${ltrText(`${fmt(y.start)}–${fmt(y.end)}`)}) ${S.on} ${joinDays(days, lang)}.`;
     }
     // single-day clashes stay abbreviated inline (matches §4's own usage:
     // "Sat"/"Wed" in a table cell), full names only when joining several days
     const d = dayShort(days[0], lang);
-    return `${cx} (${d} ${fmt(x.start)}–${fmt(x.end)}) ${S.overlaps} ${cy} (${d} ${fmt(y.start)}–${fmt(y.end)}).`;
+    return `${cx} (${d} ${ltrText(`${fmt(x.start)}–${fmt(x.end)}`)}) ${S.overlaps} ${cy} (${d} ${ltrText(`${fmt(y.start)}–${fmt(y.end)}`)}).`;
   }).join(" ");
 }
 
@@ -545,7 +569,7 @@ export function railHTML(combos, view, selectedId, badges = {}, sortKey = "secti
   const available = sortCombos(combos.filter((c) => c.valid), view, sortKey);
   const clashing = combos.filter((c) => !c.valid)
     .sort((a, b) => a.section - b.section || a.group - b.group);
-  const codeText = (c) => `${num(c.section, lang)} / ${num(c.labCode, lang)}`;
+  const codeText = (c) => ltr(`${num(c.section, lang)} / ${num(c.labCode, lang)}`);
 
   // §21 — mobile rows also show two stats (waiting, longest day); CSS
   // hides .rowstats on desktop where the rail stays compact.
@@ -557,8 +581,8 @@ export function railHTML(combos, view, selectedId, badges = {}, sortKey = "secti
                 data-id="${c.id}" role="button" tabindex="0">
               <span class="code">${codeText(c)}</span>
               <span class="rowstats">
-                <span><b>${fmt(s.deadMin)}</b> ${S.stat.deadMin}</span>
-                <span><b>${fmt(s.worstDayMin)}</b> ${S.stat.worstDayMin}</span>
+                <span><b>${ltr(fmt(s.deadMin))}</b> ${S.stat.deadMin}</span>
+                <span><b>${ltr(fmt(s.worstDayMin))}</b> ${S.stat.worstDayMin}</span>
               </span>
               ${labels ? `<span class="badges">${labels}</span>` : ""}
             </li>`;
@@ -582,12 +606,12 @@ export function statsHTML(combo, view, lang = "en") {
   const s = combo[view];
   const cell = (key, val) => `<span><b>${val}</b> ${S.stat[key]}</span>`;
   return `<div class="stats">
-    ${cell("worstDayMin", fmt(s.worstDayMin))}
-    ${cell("deadMin", fmt(s.deadMin))}
-    ${cell("classMin", fmt(s.classMin))}
-    ${cell("totalSpanMin", fmt(s.totalSpanMin))}
-    ${cell("avgStartMin", fmt(s.avgStartMin))}
-    ${cell("avgEndMin", fmt(s.avgEndMin))}
+    ${cell("worstDayMin", ltr(fmt(s.worstDayMin)))}
+    ${cell("deadMin", ltr(fmt(s.deadMin)))}
+    ${cell("classMin", ltr(fmt(s.classMin)))}
+    ${cell("totalSpanMin", ltr(fmt(s.totalSpanMin)))}
+    ${cell("avgStartMin", ltr(fmt(s.avgStartMin)))}
+    ${cell("avgEndMin", ltr(fmt(s.avgEndMin)))}
     ${cell("earlyDays", num(s.earlyDays, lang))}
     ${cell("lateDays", num(s.lateDays, lang))}
   </div>`;
@@ -684,7 +708,7 @@ export function nudgeHTML(combo, combos, view, lang = "en") {
   if (n) {
     out += `<div class="nudge">
       <b>${S.labels.betterExists}.</b>
-      <div>${S.identicalLectures(cid(combo.id, lang), cid(n.targetId, lang), durText(n.diffMin, lang))}</div>
+      <div>${S.identicalLectures(cid(combo.id, lang), cid(n.targetId, lang), ltr(durText(n.diffMin, lang)))}</div>
       <button data-switch="${n.targetId}">${S.switchTo(cid(n.targetId, lang))}</button>
     </div>`;
   }
@@ -705,7 +729,7 @@ export function noticeHTML(combo, lang = "en") {
   if (combo.valid) return "";
   const S = STRINGS[lang];
   return `<div class="clashnotice">
-    <b>${esc(S.sectionHasClash(num(combo.section, lang)))}</b>
+    <b>${esc(S.sectionHasClash(ltrText(num(combo.section, lang))))}</b>
     <div>${esc(conflictSentence(combo, lang))}</div>
     <div>${esc(S.cantTakeSection)}</div>
   </div>`;
@@ -768,16 +792,19 @@ export function computeQuickPicks(combos, lang = "en") {
     used.add(winnerId);
     const winner = combo(winnerId);
     const s = winner.withLabs;
+    // fact strings get esc()'d as a whole in introHTML, so embedded
+    // times/durations use ltrText() (invisible isolate chars), not the
+    // <span>-based ltr() used where content is inserted as raw HTML.
     let fact;
-    if (key === "bestOverall") fact = S.quickBestOverall(durText(s.deadMin, lang), durText(s.worstDayMin, lang));
-    else if (key === "latestMornings") fact = S.quickNothingBefore(fmt(s.earliestStart));
-    else if (key === "earliestFinishes") fact = S.quickNeverPast(fmt(s.latestEnd));
-    else if (key === "leastWaiting") fact = S.quickOfGaps(durText(s.deadMin, lang));
-    else if (key === "mostEven") fact = S.quickNoDayOver(durText(s.worstDayMin, lang));
+    if (key === "bestOverall") fact = S.quickBestOverall(ltrText(durText(s.deadMin, lang)), ltrText(durText(s.worstDayMin, lang)));
+    else if (key === "latestMornings") fact = S.quickNothingBefore(ltrText(fmt(s.earliestStart)));
+    else if (key === "earliestFinishes") fact = S.quickNeverPast(ltrText(fmt(s.latestEnd)));
+    else if (key === "leastWaiting") fact = S.quickOfGaps(ltrText(durText(s.deadMin, lang)));
+    else if (key === "mostEven") fact = S.quickNoDayOver(ltrText(durText(s.worstDayMin, lang)));
     else {   // shortDay — name the specific day that's light
       const day = SETTINGS.days.reduce((best, d) =>
         (s.byDay[d]?.spanMin ?? Infinity) < (s.byDay[best]?.spanMin ?? Infinity) ? d : best, SETTINGS.days[0]);
-      fact = S.quickOneBlock(dayFull(day, lang), durText(s.byDay[day].spanMin, lang));
+      fact = S.quickOneBlock(dayFull(day, lang), ltrText(durText(s.byDay[day].spanMin, lang)));
     }
     return { key, comboId: winnerId, extraCount: key === "bestOverall" ? 0 : tie.length - 1, fact };
   }).filter(Boolean);
@@ -809,7 +836,7 @@ export function introHTML(combos, lang = "en") {
     const c = combos.find((x) => x.id === p.comboId);
     return `<div class="pickcard" data-combo="${p.comboId}" role="button" tabindex="0">
       <span class="pickbadge">${esc(S.labels[p.key])}</span>
-      <span class="pickcode">${num(c.section, lang)} / ${num(c.labCode, lang)}</span>
+      <span class="pickcode">${ltr(`${num(c.section, lang)} / ${num(c.labCode, lang)}`)}</span>
       <span class="pickfact">${esc(p.fact)}</span>
       ${p.extraCount > 0 ? `<span class="pickmore">${esc(S.andNOther(num(p.extraCount, lang)))}</span>` : ""}
     </div>`;
@@ -844,26 +871,29 @@ export function printHeaderHTML(combo, view, lang) {
   const S = STRINGS[lang];
   const date = new Date().toISOString().slice(0, 10);
   return `<div class="printheader">
-    <div class="printtitle">${esc(S.printSectionLabs(num(combo.section, lang), num(combo.labCode, lang)))}</div>
-    <div class="printmeta">${esc(view === "withLabs" ? S.fullWeek : S.lectureWeek)} · ${esc(S.printGenerated(date))}</div>
+    <div class="printtitle">${esc(S.printSectionLabs(ltrText(num(combo.section, lang)), ltrText(num(combo.labCode, lang))))}</div>
+    <div class="printmeta">${esc(view === "withLabs" ? S.fullWeek : S.lectureWeek)} · ${esc(S.printGenerated(ltrText(date)))}</div>
   </div>`;
 }
 
 // One row per meeting, sorted by day then start. Labs drop out entirely
 // when printing the Lecture-week view, same filtering every other
-// view-aware computation in the app already applies.
-export function scheduleTableHTML(combo, view, lang) {
+// view-aware computation in the app already applies. `days` narrows to a
+// subset (print splits Sat–Mon | Tue–Wed into two side-by-side tables
+// so a 15-row combo doesn't blow the page budget); omit it for all days.
+export function scheduleTableHTML(combo, view, lang, days = SETTINGS.days) {
   const S = STRINGS[lang];
   const items = [...combo.lectures, ...(view === "withLabs" ? combo.labs : [])]
+    .filter((m) => days.includes(m.day))
     .slice()
     .sort((a, b) => SETTINGS.days.indexOf(a.day) - SETTINGS.days.indexOf(b.day) || a.start - b.start);
   const rows = items.map((m) => {
-    const room = m.room === null ? "⌁" : m.roomUncertain ? `${esc(m.room)} ⌁` : esc(m.room);
+    const room = m.room === null ? ltr("⌁") : m.roomUncertain ? ltr(`${esc(m.room)} ⌁`) : ltr(esc(m.room));
     return `<tr>
       <td>${esc(dayFull(m.day, lang))}</td>
-      <td>${fmt(m.start)}</td>
-      <td>${fmt(m.end)}</td>
-      <td>${durText(m.end - m.start, lang)}</td>
+      <td>${ltr(fmt(m.start))}</td>
+      <td>${ltr(fmt(m.end))}</td>
+      <td>${ltr(durText(m.end - m.start, lang))}</td>
       <td>${esc(courseName(m.course, lang))}</td>
       <td>${m.kind === "lab" ? esc(S.typeLab) : esc(S.typeLecture)}</td>
       <td>${room}</td>
@@ -890,20 +920,20 @@ export function dailyTotalsHTML(combo, view, lang) {
     if (!b) return "";
     return `<tr>
       <td>${esc(dayFull(d, lang))}</td>
-      <td>${fmt(b.start)}</td>
-      <td>${fmt(b.end)}</td>
-      <td>${durText(b.spanMin, lang)}</td>
-      <td>${durText(b.classMin, lang)}</td>
-      <td>${durText(b.gapMin, lang)}</td>
+      <td>${ltr(fmt(b.start))}</td>
+      <td>${ltr(fmt(b.end))}</td>
+      <td>${ltr(durText(b.spanMin, lang))}</td>
+      <td>${ltr(durText(b.classMin, lang))}</td>
+      <td>${ltr(durText(b.gapMin, lang))}</td>
     </tr>`;
   }).join("");
   const totalRow = `<tr class="printtotal">
     <td>${esc(S.printWeekTotal)}</td>
-    <td>${fmt(s.earliestStart)}</td>
-    <td>${fmt(s.latestEnd)}</td>
-    <td>${durText(s.totalSpanMin, lang)}</td>
-    <td>${durText(s.classMin, lang)}</td>
-    <td>${durText(s.deadMin, lang)}</td>
+    <td>${ltr(fmt(s.earliestStart))}</td>
+    <td>${ltr(fmt(s.latestEnd))}</td>
+    <td>${ltr(durText(s.totalSpanMin, lang))}</td>
+    <td>${ltr(durText(s.classMin, lang))}</td>
+    <td>${ltr(durText(s.deadMin, lang))}</td>
   </tr>`;
   return `<table class="printtable">
     <thead><tr>
