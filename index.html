@@ -13,7 +13,7 @@
   <div id="app">Loading…</div>
 
   <script type="module">
-    import { buildCombos, errors, courses, num, gridHTML, railHTML, statsHTML,
+    import { buildCombos, errors, courses, num, ltr, gridHTML, railHTML, statsHTML,
              computeBadges, nudgeHTML, noticeHTML, sortControlHTML,
              introHTML, langToggleHTML, blockPopoverHTML,
              printHeaderHTML, scheduleTableHTML, dailyTotalsHTML, printFooterHTML,
@@ -77,7 +77,7 @@
       // §21 — mobile detail header (back arrow + combo id), shown only
       // when data-mobile-screen="detail"; the normal appbar/langtoggle
       // hide there to keep it minimal. Desktop ignores all of this.
-      const detailCode = sel ? `${num(sel.section, state.lang)} / ${num(sel.labCode, state.lang)}` : "";
+      const detailCode = sel ? ltr(`${num(sel.section, state.lang)} / ${num(sel.labCode, state.lang)}`) : "";
       return `
         <div class="sectionsview" data-mobile-screen="${state.mobileScreen}">
           ${langToggleHTML(state.lang)}
@@ -106,16 +106,24 @@
             </aside>
             <div class="canvas">
               ${sel ? noticeHTML(sel, state.lang) : ""}
+              <!-- print DOM order: header, then grid, then the two-column
+                   bottom section, then footer — several small .printonly
+                   wrappers scattered through normal flow rather than one
+                   block, since the grid itself has to render between the
+                   header and the tables (it's shared with the screen view,
+                   so it can't just live inside a single printonly div). -->
+              ${sel && sel.valid ? `<div class="printonly">${printHeaderHTML(sel, state.view, state.lang)}</div>` : ""}
               ${sel ? gridHTML(sel, state.view, animate, state.lang) : `<p>${S.noCombo}</p>`}
               ${sel && sel.valid ? `
-                <div class="printonly">
-                  ${printHeaderHTML(sel, state.view, state.lang)}
-                  ${scheduleTableHTML(sel, state.view, state.lang)}
-                  ${dailyTotalsHTML(sel, state.view, state.lang)}
-                  ${printFooterHTML(state.lang)}
+                <div class="printonly printbottom">
+                  <div class="printcol">${scheduleTableHTML(sel, state.view, state.lang, ["Sat", "Sun", "Mon"])}</div>
+                  <div class="printcol">${scheduleTableHTML(sel, state.view, state.lang, ["Tue", "Wed"])}</div>
+                  <div class="printcol">${dailyTotalsHTML(sel, state.view, state.lang)}</div>
                 </div>
+                <div class="printonly">${printFooterHTML(state.lang)}</div>
                 <button class="savepdf" data-savepdf>${S.saveAsPdf}</button>
                 <div class="savepdf-hint">${S.landscapeHint}</div>
+                <div class="savepdf-note">${S.printDialogHint}</div>
               ` : ""}
               ${sel && sel.valid ? statsHTML(sel, state.view, state.lang) : ""}
               ${sel && sel.valid ? nudgeHTML(sel, combos, state.view, state.lang) : ""}

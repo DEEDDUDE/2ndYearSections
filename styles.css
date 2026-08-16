@@ -39,6 +39,11 @@
 
 * { box-sizing: border-box; }
 
+/* LTR data (times, room codes, section/lab codes, durations) embedded in
+   RTL text — isolated so the bidi algorithm never visually reverses it.
+   See the ltr() helper in app.js for where this is applied. */
+.ltr-data { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+
 body {
   font-family: var(--body);
   font-weight: 500;
@@ -390,6 +395,10 @@ html[lang="ar"] .void .vd-short {
 }
 .savepdf:hover { background: color-mix(in srgb, var(--hema) 6%, var(--slide)); }
 .savepdf-hint { display: none; text-align: center; font-size: 11px; color: var(--hema-lo); margin-top: 4px; }
+/* the browser's own print dialog prints a date/URL header+footer unless
+   the user turns it off — only they can do that, so tell them how,
+   every screen size (unlike the mobile-only landscape hint above) */
+.savepdf-note { display: block; text-align: center; font-size: 11px; color: var(--hema-lo); margin-top: 4px; }
 
 /* ---- stat strip ---- */
 .stats {
@@ -636,7 +645,11 @@ html[lang="ar"] .void .vd-short {
    week grid, schedule table, daily totals, footer. Everything else —
    rail, toggles, nudges, badges — hidden.
    ================================================================ */
-@page { size: landscape; margin: 10mm; }
+/* A4 landscape, 8mm margin — printable area ≈ 281×194mm ≈ 1062×733px
+   at the 96dpi CSS reference browsers use for print layout. The height
+   budget below (grid, then tables) is sized against that 733px figure
+   with a safety margin, since exact print-engine rendering varies. */
+@page { size: A4 landscape; margin: 8mm; }
 
 @media print {
   html, body { background: #fff; }
@@ -645,7 +658,7 @@ html[lang="ar"] .void .vd-short {
 
   .langtoggle, .hometab, .appbar, .detailheader, .viewtoggle,
   .rail, .banner, .clashnotice, .stats, .nudge, .twinchip, .shapechip,
-  .savepdf, .savepdf-hint,
+  .savepdf, .savepdf-hint, .savepdf-note,
   .screen-ghost, .mobile-slide-ghost, .popoverscrim {
     display: none !important;
   }
@@ -660,27 +673,42 @@ html[lang="ar"] .void .vd-short {
   .hour-full, .bc-full, .labtag-full, .vd-full, .block .br { display: block !important; }
   .hour-short, .bc-short, .labtag-short, .vd-short { display: none !important; }
   .timecol { flex-basis: 52px !important; }
+
+  /* week grid — top ~55% of the page. daybody's height is the actual
+     fit lever: 08:00–17:00 (9 hours) scaled to 300px keeps dayhead
+     (30px) + daybody comfortably under the page's height budget. */
   .grid { break-inside: avoid; page-break-inside: avoid; }
-  .daybody { height: 380px; }
+  .daybody { height: 300px; }
   .block, .void { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 
-  .printheader { margin-bottom: 10px; }
+  .printheader { margin-bottom: 8px; }
   .printtitle {
-    font-family: var(--display); font-weight: 700; font-size: 20px; color: #000;
+    font-family: var(--display); font-weight: 700; font-size: 18px; color: #000;
   }
-  .printmeta { font-family: var(--mono); font-size: 12px; color: #333; }
+  .printmeta { font-family: var(--mono); font-size: 11px; color: #333; }
+
+  /* bottom ~45%: schedule table + daily totals side by side, not
+     stacked. The schedule table itself is pre-split Sat–Mon | Tue–Wed
+     (scheduleTableHTML called twice) so a full 15-row combo halves to
+     ~8 rows per column instead of risking the page on one long table. */
+  .printbottom {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 10px;
+    margin-top: 8px;
+  }
+  .printcol { min-width: 0; break-inside: avoid; page-break-inside: avoid; }
+  .printcol + .printcol { border-inline-start: 1px solid #ccc; padding-inline-start: 10px; }
 
   .printtable {
-    width: 100%; border-collapse: collapse; margin-top: 14px;
-    font-family: var(--mono); font-size: 11px; color: #000;
+    width: 100%; border-collapse: collapse;
+    font-family: var(--mono); font-size: 10px; color: #000;
+    break-inside: avoid; page-break-inside: avoid;
   }
   .printtable th, .printtable td {
-    border: 1px solid #999; padding: 3px 7px; text-align: start;
+    border: 1px solid #999; padding: 2px 5px; text-align: start;
   }
   .printtable thead th { background: #eee; font-weight: 700; }
   .printtable .printtotal { font-weight: 700; }
-  .printtable + .printtable { margin-top: 10px; }
 
-  .printfooter { margin-top: 10px; font-size: 10px; color: #333; line-height: 1.5; }
-  .printfooter div + div { margin-top: 3px; }
+  .printfooter { margin-top: 8px; font-size: 9px; color: #333; line-height: 1.4; }
+  .printfooter div + div { margin-top: 2px; }
 }
