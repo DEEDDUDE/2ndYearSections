@@ -285,7 +285,7 @@ export const STRINGS = {
     quickBestOverall: (dead, worst) => `${dead} waiting · no day over ${worst}`,
     // §9 (original spec) — print stylesheet + PDF export
     saveAsPdf: "Save as PDF",
-    landscapeHint: "Best saved in landscape",
+    portraitHint: "Best saved in portrait",
     printDialogHint: "Turn off \"Headers and footers\" in the print dialog for a clean page",
     printSectionLabs: (section, labCode) => `Section ${section} · Labs ${labCode}`,
     printGenerated: (date) => `Generated ${date}`,
@@ -351,7 +351,7 @@ export const STRINGS = {
     // Western here too (§19's later decision overrides this doc's own
     // original Arabic-Indic example, "الشعبة ٢ · مختبرات ٢١").
     saveAsPdf: "حفظ كملف PDF",
-    landscapeHint: "يُفضّل الحفظ بالوضع الأفقي",
+    portraitHint: "يُفضّل الحفظ بالوضع الرأسي",
     printDialogHint: "أوقف «الرؤوس والتذييلات» في نافذة الطباعة للحصول على صفحة نظيفة",
     printSectionLabs: (section, labCode) => `الشعبة ${section} · مختبرات ${labCode}`,
     printGenerated: (date) => `أُنشئ في ${date}`,
@@ -876,11 +876,23 @@ export function printHeaderHTML(combo, view, lang) {
   </div>`;
 }
 
+// Portrait print narrows grid blocks to a two-letter course id (colour
+// carries the rest) — this one-line legend under the grid is what makes
+// that readable. Order follows COURSES' own declaration order, which
+// matches the [data-course] hue hooks in styles.css.
+export function printLegendHTML(lang) {
+  const pairs = Object.entries(courses)
+    .map(([id, c]) => `${ltr(id)} ${esc(c[lang])}`)
+    .join(lang === "ar" ? " · " : " · ");
+  return `<div class="printlegend">${pairs}</div>`;
+}
+
 // One row per meeting, sorted by day then start. Labs drop out entirely
 // when printing the Lecture-week view, same filtering every other
 // view-aware computation in the app already applies. `days` narrows to a
-// subset (print splits Sat–Mon | Tue–Wed into two side-by-side tables
-// so a 15-row combo doesn't blow the page budget); omit it for all days.
+// subset — unused by default (portrait stacks one full-width table), kept
+// as an escape hatch if a future combo's row count ever needs the old
+// Sat–Mon | Tue–Wed side-by-side split.
 export function scheduleTableHTML(combo, view, lang, days = SETTINGS.days) {
   const S = STRINGS[lang];
   const items = [...combo.lectures, ...(view === "withLabs" ? combo.labs : [])]
