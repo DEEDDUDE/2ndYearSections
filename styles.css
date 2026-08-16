@@ -641,15 +641,20 @@ html[lang="ar"] .void .vd-short {
 /* ================================================================
    §9 (original spec) — print stylesheet + PDF export.
    window.print() only; no jsPDF/html2canvas (they rasterize and
-   wreck Arabic shaping). Single landscape page: chosen combo header,
-   week grid, schedule table, daily totals, footer. Everything else —
-   rail, toggles, nudges, badges — hidden.
+   wreck Arabic shaping). Single portrait page: chosen combo header,
+   week grid, legend, schedule table, daily totals, footer. Everything
+   else — rail, toggles, nudges, badges — hidden.
    ================================================================ */
-/* A4 landscape, 8mm margin — printable area ≈ 281×194mm ≈ 1062×733px
-   at the 96dpi CSS reference browsers use for print layout. The height
-   budget below (grid, then tables) is sized against that 733px figure
-   with a safety margin, since exact print-engine rendering varies. */
-@page { size: A4 landscape; margin: 8mm; }
+/* A4 portrait, 10mm margin — printable area ≈ 190×277mm ≈ 718×1047px
+   at the 96dpi CSS reference browsers use for print layout. Portrait is
+   narrow, so the fit lever is the grid's content, not its width: blocks
+   drop to two-letter course ids and lose room text (a legend + the
+   table below carry that instead), and the time axis drops to hour
+   numbers — the same compaction already built for the <768px mobile
+   grid (§21), reused here rather than duplicated. The height budget
+   below is sized against the 1047px figure with a safety margin, since
+   exact print-engine rendering varies. */
+@page { size: A4 portrait; margin: 10mm; }
 
 @media print {
   html, body { background: #fff; }
@@ -667,48 +672,52 @@ html[lang="ar"] .void .vd-short {
   .canvas { width: 100%; }
   .printonly { display: block; }
 
-  /* force full-content grid regardless of the originating viewport —
-     printed output is always the "desktop" reading, never the
-     mobile short forms, and always shows room text */
-  .hour-full, .bc-full, .labtag-full, .vd-full, .block .br { display: block !important; }
-  .hour-short, .bc-short, .labtag-short, .vd-short { display: none !important; }
-  .timecol { flex-basis: 52px !important; }
+  /* narrow-width grid content — same short forms §21 built for the
+     <768px mobile breakpoint (two-letter course id, hour-only axis,
+     short void durations hidden under 60min, "LAB" + code), reused
+     verbatim since portrait print has the same width constraint. Room
+     text drops entirely — it's already in the schedule table below. */
+  .hour-full, .bc-full, .labtag-full, .vd-full, .block .br { display: none !important; }
+  .hour-short, .bc-short, .labtag-short, .vd-short { display: block !important; }
+  .void.voidshort .vd-short { display: none !important; }
+  .timecol { flex-basis: 26px !important; }
+  .block { padding: 2px 3px !important; }
+  .block .bc-short { font-size: 11px !important; }
 
-  /* week grid — top ~55% of the page. daybody's height is the actual
-     fit lever: 08:00–17:00 (9 hours) scaled to 300px keeps dayhead
-     (30px) + daybody comfortably under the page's height budget. */
+  /* week grid — ~110mm (≈416px) budget. dayhead shrinks to 20px and
+     daybody to 330px so 08:00–17:00 (9 hours) plus the legend line
+     comfortably clears the budget with margin for render variance. */
   .grid { break-inside: avoid; page-break-inside: avoid; }
-  .daybody { height: 300px; }
+  .dayhead { height: 20px !important; line-height: 20px !important; font-size: 11px !important; }
+  .daybody { height: 330px; }
   .block, .void { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 
-  .printheader { margin-bottom: 8px; }
+  .printheader { margin-bottom: 6px; }
   .printtitle {
-    font-family: var(--display); font-weight: 700; font-size: 18px; color: #000;
+    font-family: var(--display); font-weight: 700; font-size: 16px; color: #000;
   }
-  .printmeta { font-family: var(--mono); font-size: 11px; color: #333; }
+  .printmeta { font-family: var(--mono); font-size: 10px; color: #333; }
 
-  /* bottom ~45%: schedule table + daily totals side by side, not
-     stacked. The schedule table itself is pre-split Sat–Mon | Tue–Wed
-     (scheduleTableHTML called twice) so a full 15-row combo halves to
-     ~8 rows per column instead of risking the page on one long table. */
-  .printbottom {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 10px;
-    margin-top: 8px;
+  .printlegend {
+    margin-top: 4px; font-family: var(--mono); font-size: 9px; color: #333;
+    break-inside: avoid; page-break-inside: avoid;
   }
-  .printcol { min-width: 0; break-inside: avoid; page-break-inside: avoid; }
-  .printcol + .printcol { border-inline-start: 1px solid #ccc; padding-inline-start: 10px; }
 
+  /* schedule table + daily totals, STACKED full width — portrait's
+     width doesn't fit them side by side, and both are short enough
+     (15 meeting rows and 6 day rows at most, fixed by the six-course
+     dataset) to stack well inside the remaining budget. */
   .printtable {
-    width: 100%; border-collapse: collapse;
-    font-family: var(--mono); font-size: 10px; color: #000;
+    width: 100%; border-collapse: collapse; margin-top: 6px;
+    font-family: var(--mono); font-size: 9px; color: #000;
     break-inside: avoid; page-break-inside: avoid;
   }
   .printtable th, .printtable td {
-    border: 1px solid #999; padding: 2px 5px; text-align: start;
+    border: 1px solid #999; padding: 1.5px 4px; text-align: start;
   }
   .printtable thead th { background: #eee; font-weight: 700; }
   .printtable .printtotal { font-weight: 700; }
 
-  .printfooter { margin-top: 8px; font-size: 9px; color: #333; line-height: 1.4; }
+  .printfooter { margin-top: 6px; font-size: 8px; color: #333; line-height: 1.35; }
   .printfooter div + div { margin-top: 2px; }
 }
