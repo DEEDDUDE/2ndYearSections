@@ -421,7 +421,7 @@ html[lang="ar"] .void .vd-short {
   padding: 6px 14px; border-radius: 4px;
   background: var(--eosin); color: #fff; border: none;
 }
-.twinchip, .shapechip {
+.twinchip, .shapechip, .swapchip {
   margin-top: 10px; font-family: var(--body); font-size: 13px;
   color: var(--hema-lo); line-height: 1.4;
 }
@@ -661,7 +661,7 @@ html[lang="ar"] .void .vd-short {
   * { box-shadow: none !important; }
 
   .langtoggle, .hometab, .appbar, .detailheader, .viewtoggle,
-  .rail, .banner, .clashnotice, .stats, .nudge, .twinchip, .shapechip,
+  .rail, .banner, .clashnotice, .stats, .nudge, .twinchip, .shapechip, .swapchip,
   .savepdf, .savepdf-hint, .savepdf-note,
   .screen-ghost, .mobile-slide-ghost, .popoverscrim {
     display: none !important;

@@ -124,14 +124,18 @@ export function buildCombos() {
         withLabs: stats(all), lecturesOnly: stats(lec) });
     }
   }
-  // twins — identical timings
+  // twins — identical timings AND identical course per slot. Comparing
+  // only start/end/classMin per day previously let two combos that hold
+  // the same time slots with different courses swapped into them (e.g.
+  // 5-51/5-52, where Microbiology and Pathology trade slots) collide
+  // onto the same signature and get falsely flagged as twins — so the
+  // signature must include which course sits in each slot, not just the
+  // slot's shape. items are already start-sorted by stats().
   const sig = {};
   list.filter((c) => c.valid).forEach((c) => {
-    // signature = shape of the week only. Lab codes differ by definition,
-    // so compare start/end/span per day, never the items themselves.
     const k = SETTINGS.days.map((d) => {
       const x = c.withLabs.byDay[d];
-      return x ? `${d}:${x.start}-${x.end}:${x.classMin}` : `${d}:-`;
+      return x ? `${d}:` + x.items.map((it) => `${it.course}:${it.start}-${it.end}`).join(",") : `${d}:-`;
     }).join("|");
     (sig[k] ||= []).push(c);
   });
@@ -269,6 +273,7 @@ export const STRINGS = {
     switchTo: (id) => `Switch to ${id}`,
     sameTimings: (ids) => `Same timings as ${ids} — different seat only.`,
     sameTotals: (a, dayA, b, dayB) => `Same totals — ${a} loads ${dayA}, ${b} loads ${dayB}.`,
+    sameSlotsSwap: (id, a, b) => `Same times as ${id}, but ${a} and ${b} swap slots.`,
     // intro (§13)
     offeredSections: "Offered sections",
     browseAll: "Browse all sections",
@@ -332,6 +337,7 @@ export const STRINGS = {
     switchTo: (id) => `التبديل إلى ${id}`,
     sameTimings: (ids) => `نفس التوقيت في ${ids} — فقط مقعد مختلف.`,
     sameTotals: (a, dayA, b, dayB) => `نفس الإجمالي — ${a} يُحمَّل يوم ${dayA}، و${b} يوم ${dayB}.`,
+    sameSlotsSwap: (id, a, b) => `نفس الأوقات مثل ${id}، لكن ${a} و${b} يتبادلان المواعيد.`,
     // intro (§13)
     offeredSections: "الشعب المطروحة",
     browseAll: "تصفح جميع الشعب",
@@ -694,6 +700,48 @@ export function computeShapeChips(combo, combos, view, lang = "en") {
   return chips;
 }
 
+// Swapped-slots siblings: same-section combos whose time slots (day +
+// start/end, ignoring which course fills them) are byte-identical to
+// combo's, but the course-to-slot assignment differs — i.e. not a twin
+// (courses per slot differ), but not a computeShapeChips case either
+// (per-day spans tie exactly, since it's literally the same slots).
+// Which courses actually swapped is derived from the data, never
+// hardcoded: any course whose (day,start,end) differs between the two
+// combos is "affected"; only shown when exactly two are affected, since
+// that's the one case with an unambiguous "A and B swap slots" reading.
+export function computeSwapChips(combo, combos, view, lang = "en") {
+  if (!combo.valid) return [];
+  const S = (c) => c[view];
+  const slotSig = (c) => SETTINGS.days.map((d) => {
+    const x = S(c).byDay[d];
+    return x ? `${d}:` + x.items.map((it) => `${it.start}-${it.end}`).join(",") : `${d}:-`;
+  }).join("|");
+  const courseAtSlot = (c) => {
+    const m = {};
+    for (const d of SETTINGS.days) for (const it of S(c).byDay[d]?.items ?? []) m[`${d}:${it.start}-${it.end}`] = it.course;
+    return m;
+  };
+
+  const mySlots = slotSig(combo);
+  const myMap = courseAtSlot(combo);
+  const seen = new Set();
+  const chips = [];
+  for (const s of combos) {
+    if (!s.valid || s.section !== combo.section || s === combo) continue;
+    if (slotSig(s) !== mySlots) continue;           // different time shape entirely
+    const theirMap = courseAtSlot(s);
+    const affected = new Set();
+    for (const key of Object.keys(myMap)) if (myMap[key] !== theirMap[key]) { affected.add(myMap[key]); affected.add(theirMap[key]); }
+    if (affected.size !== 2) continue;               // twin (0) or a 3+-way reshuffle (ambiguous to phrase) — skip
+    const [a, b] = [...affected].sort();
+    const dedupeKey = `${a}|${b}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    chips.push({ siblingId: s.id, courseA: courseName(a, lang), courseB: courseName(b, lang) });
+  }
+  return chips;
+}
+
 // Nudge card + quiet twin / shape chips for the selected combo.
 export function nudgeHTML(combo, combos, view, lang = "en") {
   const S = STRINGS[lang];
@@ -711,6 +759,9 @@ export function nudgeHTML(combo, combos, view, lang = "en") {
   }
   for (const s of computeShapeChips(combo, combos, view, lang)) {
     out += `<div class="shapechip">${S.sameTotals(cid(combo.id, lang), s.selfDay, cid(s.siblingId, lang), s.siblingDay)}</div>`;
+  }
+  for (const s of computeSwapChips(combo, combos, view, lang)) {
+    out += `<div class="swapchip">${S.sameSlotsSwap(cid(s.siblingId, lang), esc(s.courseA), esc(s.courseB))}</div>`;
   }
   return out;
 }
