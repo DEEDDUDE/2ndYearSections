@@ -31,7 +31,6 @@ Course ids: `PH` `MB` `BC` `MC` `PA` `PM` — listed at the top of the file.
 | Days | `Sat` `Sun` `Mon` `Tue` `Wed` — exactly these spellings |
 | Times | 24-hour, `HH:MM`, always two digits — `08:00` not `8:00` |
 | Room unknown | write `?` |
-| Room is a guess | add `~` after it — `ST238 ~` |
 | Comment out a line | put `#` at the start |
 
 ## Making a change
@@ -57,11 +56,11 @@ The bad line is skipped and the rest of the site keeps working. Fix the line, co
 
 **A lecture moved:** find the line, change the day/time.
 
-**A room was confirmed:** replace `?` with the room, or delete the ` ~` if it's now certain.
+**A room was confirmed:** replace `?` with the room.
 
 **A section was removed:** delete all 2 lines for that course+section, and its 3 lab lines if it has labs. Then remove the number from `sectionsAvailable` in `SETTINGS` at the bottom.
 
-**Sections 7 and 8 got fixed:** just correct the clashing lines. They'll turn from grey to selectable by themselves — nothing else to change.
+**A clashing section got fixed:** just correct the clashing lines. It'll turn from grey to selectable by itself — nothing else to change.
 
 **A new section appeared:** add 2 lines per course (12 total), plus 3 lab lines per lab course if it has labs, and add the number to `sectionsAvailable`.
 

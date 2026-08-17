@@ -259,7 +259,6 @@ export const STRINGS = {
     universityName: "Al-Quds University",
     close: "Close",
     roomUnknown: "Room not published yet",
-    roomAssumed: "Room assumed for both days — confirm with registration",
     noCombo: "No combo.",
     problems: (n) => `${n} problem${n > 1 ? "s" : ""} in schedule-data.js`,
     overlaps: "overlaps",
@@ -323,7 +322,6 @@ export const STRINGS = {
     universityName: "جامعة القدس",
     close: "إغلاق",
     roomUnknown: "القاعة غير معلنة بعد",
-    roomAssumed: "القاعة مفترضة لليومين — تأكد من التسجيل",
     noCombo: "لا يوجد خيار.",
     problems: (n) => `${n} مشكلة في بيانات الجدول`,
     overlaps: "يتعارض مع",
@@ -432,9 +430,7 @@ export function gridHTML(combo, view = "withLabs", animate = false, lang = "en")
       const delay = Math.round(ci * 25 + (top / 100) * 200);  // top-left → bottom-right
       const room = b.room === null
         ? `<span class="br unknown" title="${esc(S.roomUnknown)}">${ltr("—")}</span>`
-        : `<span class="br${b.roomUncertain ? " assumed" : ""}"${
-            b.roomUncertain ? ` title="${esc(S.roomAssumed)}"` : ""
-          }>${ltr(esc(b.room))}</span>`;
+        : `<span class="br">${ltr(esc(b.room))}</span>`;
       // A lab is a different material: hatch fill + dashed outline (in CSS)
       // plus a mono micro-label and the lab code, so it survives greyscale.
       // §21 — mobile shrinks "LAB · not weekly" to just "LAB".
@@ -445,7 +441,7 @@ export function gridHTML(combo, view = "withLabs", animate = false, lang = "en")
       // included, since that's how touch reaches the hover-only warnings).
       return `<div class="block ${b.kind}${faded}${isClash ? " clash" : ""}" data-course="${b.course}"
                    data-kind="${b.kind}" data-day="${b.day}" data-start="${b.start}" data-end="${b.end}"
-                   data-room="${b.room === null ? "" : esc(b.room)}" data-room-uncertain="${b.roomUncertain ? "1" : "0"}"
+                   data-room="${b.room === null ? "" : esc(b.room)}"
                    ${b.kind === "lab" ? `data-lab-code="${b.labCode}"` : ""}
                    style="top:${top}%;height:${h}%;--d:${delay}ms;${laneStyle}">
                 <span class="bc-full">${esc(courseName(b.course, lang))}</span>
@@ -475,7 +471,7 @@ export function gridHTML(combo, view = "withLabs", animate = false, lang = "en")
 // Reachable only by tap, gated to <768px in index.html — desktop keeps
 // its existing hover-title behaviour untouched. `info` is read straight
 // off a block's data-* attributes: {course, kind, day, start, end,
-// room ("" for unknown), roomUncertain, labCode}.
+// room ("" for unknown), labCode}.
 export function blockPopoverHTML(info, lang) {
   const S = STRINGS[lang];
   const name = courseName(info.course, lang);
@@ -484,9 +480,7 @@ export function blockPopoverHTML(info, lang) {
   const time = ltr(`${fmt(+info.start)}–${fmt(+info.end)}`);
   const roomBlock = info.room === ""
     ? `<div class="popoverwarn">${esc(S.roomUnknown)}</div>`
-    : info.roomUncertain === "1"
-      ? `<div class="popoverroom">${ltr(esc(info.room))}</div><div class="popoverwarn">${esc(S.roomAssumed)}</div>`
-      : `<div class="popoverroom">${ltr(esc(info.room))}</div>`;
+    : `<div class="popoverroom">${ltr(esc(info.room))}</div>`;
   const labLine = info.kind === "lab"
     ? `<div class="popoverlab">${esc(S.labTag)} · ${ltr(num(info.labCode, lang))}</div>` : "";
   return `<button class="popoverclose" data-popover-close aria-label="${esc(S.close)}">×</button>
@@ -900,7 +894,7 @@ export function scheduleTableHTML(combo, view, lang, days = SETTINGS.days) {
     .slice()
     .sort((a, b) => SETTINGS.days.indexOf(a.day) - SETTINGS.days.indexOf(b.day) || a.start - b.start);
   const rows = items.map((m) => {
-    const room = m.room === null ? ltr("⌁") : m.roomUncertain ? ltr(`${esc(m.room)} ⌁`) : ltr(esc(m.room));
+    const room = m.room === null ? ltr("⌁") : ltr(esc(m.room));
     return `<tr>
       <td>${esc(dayFull(m.day, lang))}</td>
       <td>${ltr(fmt(m.start))}</td>

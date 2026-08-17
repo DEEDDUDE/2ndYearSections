@@ -325,7 +325,6 @@ html[lang="ar"] .void .vd-short {
 .block .bt { display: block; font-family: var(--mono); font-size: 11px; color: var(--hema-lo); }
 .block .br { display: block; font-family: var(--mono); font-size: 11px; color: var(--hema-lo); }
 .block .br.unknown { color: var(--eosin); }
-.block .br.assumed { text-decoration: underline dotted; text-underline-offset: 2px; }
 
 [data-course="PH"] { --c: var(--c-ph); }
 [data-course="MB"] { --c: var(--c-mb); }
