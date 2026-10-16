@@ -421,6 +421,15 @@ html[lang="ar"] .void .vd-short {
   padding: 6px 14px; border-radius: 4px;
   background: var(--eosin); color: #fff; border: none;
 }
+.instructors { margin-top: 14px; font-family: var(--body); font-size: 13px; }
+.instructors .inshead {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--hema-lo); margin-bottom: 4px;
+}
+.instructors ul { list-style: none; margin: 0; padding: 0; }
+.instructors li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid var(--rule); }
+.instructors .insname { color: var(--hema-lo); }
+.instructors .insdoc { color: var(--hema); text-align: end; }
 .twinchip, .shapechip, .swapchip {
   margin-top: 10px; font-family: var(--body); font-size: 13px;
   color: var(--hema-lo); line-height: 1.4;
@@ -662,7 +671,7 @@ html[lang="ar"] .void .vd-short {
 
   .langtoggle, .hometab, .appbar, .detailheader, .viewtoggle,
   .rail, .banner, .clashnotice, .stats, .nudge, .twinchip, .shapechip, .swapchip,
-  .savepdf, .savepdf-hint, .savepdf-note,
+  .savepdf, .savepdf-hint, .savepdf-note, .instructors,
   .screen-ghost, .mobile-slide-ghost, .popoverscrim {
     display: none !important;
   }

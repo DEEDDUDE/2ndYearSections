@@ -16,7 +16,7 @@
     import { buildCombos, errors, courses, num, ltr, gridHTML, railHTML, statsHTML,
              computeBadges, nudgeHTML, noticeHTML, sortControlHTML,
              introHTML, langToggleHTML, blockPopoverHTML,
-             printHeaderHTML, printLegendHTML, scheduleTableHTML, dailyTotalsHTML, printFooterHTML,
+             instructorsHTML, printHeaderHTML, printLegendHTML, scheduleTableHTML, dailyTotalsHTML, printFooterHTML,
              STRINGS } from "./app.js";
 
     const combos = buildCombos();
@@ -115,6 +115,7 @@
                    inside a single printonly div). -->
               ${sel && sel.valid ? `<div class="printonly">${printHeaderHTML(sel, state.view, state.lang)}</div>` : ""}
               ${sel ? gridHTML(sel, state.view, animate, state.lang) : `<p>${S.noCombo}</p>`}
+              ${sel ? instructorsHTML(sel, state.lang) : ""}
               ${sel && sel.valid ? `
                 <div class="printonly">${printLegendHTML(state.lang)}</div>
                 <div class="printonly">${scheduleTableHTML(sel, state.view, state.lang)}</div>
@@ -349,7 +350,7 @@
       const info = {
         course: el.dataset.course, kind: el.dataset.kind, day: el.dataset.day,
         start: el.dataset.start, end: el.dataset.end,
-        room: el.dataset.room, labCode: el.dataset.labCode,
+        room: el.dataset.room, labCode: el.dataset.labCode, instructor: el.dataset.instructor,
       };
       const scrim = document.createElement("div");
       scrim.className = "popoverscrim";

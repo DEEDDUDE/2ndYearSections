@@ -4,7 +4,7 @@
 //  Everything downstream reads from buildCombos().
 // ============================================================
 
-import { COURSES, LECTURES, LABS, SETTINGS } from "./schedule-data.js";
+import { COURSES, LECTURES, LABS, INSTRUCTORS, SETTINGS } from "./schedule-data.js";
 
 export const errors = [];
 
@@ -144,6 +144,16 @@ export function buildCombos() {
   });
   return list;
 }
+
+// Lecture instructors, keyed "PH-1" (course-section). Purely descriptive —
+// nothing in the combo/stat engine reads it.
+export const instructors = {};
+rows(INSTRUCTORS, 4, "INSTRUCTORS").forEach(({ f, line }) => {
+  if (!courses[f[0]]) return void errors.push(`INSTRUCTORS line ${line}: unknown course "${f[0]}"`);
+  instructors[`${f[0]}-${+f[1]}`] = { en: f[2], ar: f[3] };
+});
+const instructorOf = (m, lang) =>
+  m.kind === "lecture" ? instructors[`${m.course}-${m.section}`]?.[lang] ?? "" : "";
 
 // ============================================================
 //  UI LAYER (steps 2–5, phase 2 steps 1–7). Reads buildCombos()
@@ -295,6 +305,7 @@ export const STRINGS = {
     printGenerated: (date) => `Generated ${date}`,
     printDay: "Day", printStart: "Start", printEnd: "End", printDuration: "Duration",
     printCourse: "Course", printType: "Type", printRoom: "Room",
+    printInstructor: "Instructor", instructorsHead: "Instructors",
     printFirstClass: "First class", printLastClass: "Last class",
     printOnCampus: "On campus", printInClass: "In class", printWaiting: "Waiting",
     printWeekTotal: "Week total",
@@ -361,6 +372,7 @@ export const STRINGS = {
     printGenerated: (date) => `أُنشئ في ${date}`,
     printDay: "اليوم", printStart: "البداية", printEnd: "النهاية", printDuration: "المدة",
     printCourse: "المادة", printType: "النوع", printRoom: "القاعة",
+    printInstructor: "المحاضر", instructorsHead: "المحاضرون",
     printFirstClass: "أول حصة", printLastClass: "آخر حصة",
     printOnCampus: "في الجامعة", printInClass: "داخل الصف", printWaiting: "الانتظار",
     printWeekTotal: "إجمالي الأسبوع",
@@ -447,7 +459,7 @@ export function gridHTML(combo, view = "withLabs", animate = false, lang = "en")
       // included, since that's how touch reaches the hover-only warnings).
       return `<div class="block ${b.kind}${faded}${isClash ? " clash" : ""}" data-course="${b.course}"
                    data-kind="${b.kind}" data-day="${b.day}" data-start="${b.start}" data-end="${b.end}"
-                   data-room="${b.room === null ? "" : esc(b.room)}"
+                   data-room="${b.room === null ? "" : esc(b.room)}" data-instructor="${esc(instructorOf(b, lang))}"
                    ${b.kind === "lab" ? `data-lab-code="${b.labCode}"` : ""}
                    style="top:${top}%;height:${h}%;--d:${delay}ms;${laneStyle}">
                 <span class="bc-full">${esc(courseName(b.course, lang))}</span>
@@ -487,13 +499,28 @@ export function blockPopoverHTML(info, lang) {
   const roomBlock = info.room === ""
     ? `<div class="popoverwarn">${esc(S.roomUnknown)}</div>`
     : `<div class="popoverroom">${ltr(esc(info.room))}</div>`;
+  const instructorLine = info.instructor
+    ? `<div class="popoverlab">${esc(S.printInstructor)}: ${esc(info.instructor)}</div>` : "";
   const labLine = info.kind === "lab"
     ? `<div class="popoverlab">${esc(S.labTag)} · ${ltr(num(info.labCode, lang))}</div>` : "";
   return `<button class="popoverclose" data-popover-close aria-label="${esc(S.close)}">×</button>
     <div class="popoverbc">${esc(name)}</div>
     <div class="popovermeta">${esc(type)} · ${esc(day)} ${time}</div>
     ${roomBlock}
+    ${instructorLine}
     ${labLine}`;
+}
+
+// On-screen list of who teaches each course in this combo (hidden in
+// print — the schedule table's Instructor column carries it there).
+export function instructorsHTML(combo, lang) {
+  const S = STRINGS[lang];
+  const items = [...new Map(combo.lectures.map((l) => [l.course, l])).values()]
+    .map((l) => ({ id: l.course, name: instructorOf(l, lang) }))
+    .filter((x) => x.name)
+    .map((x) => `<li><span class="insname">${esc(courseName(x.id, lang))}</span><span class="insdoc">${esc(x.name)}</span></li>`)
+    .join("");
+  return items ? `<div class="instructors"><div class="inshead">${esc(S.instructorsHead)}</div><ul>${items}</ul></div>` : "";
 }
 
 // ---- STEP 3/4: option rail + sort + two tiers + live stat strip -----
@@ -954,12 +981,13 @@ export function scheduleTableHTML(combo, view, lang, days = SETTINGS.days) {
       <td>${esc(courseName(m.course, lang))}</td>
       <td>${m.kind === "lab" ? esc(S.typeLab) : esc(S.typeLecture)}</td>
       <td>${room}</td>
+      <td>${esc(instructorOf(m, lang))}</td>
     </tr>`;
   }).join("");
   return `<table class="printtable">
     <thead><tr>
       <th>${esc(S.printDay)}</th><th>${esc(S.printStart)}</th><th>${esc(S.printEnd)}</th>
-      <th>${esc(S.printDuration)}</th><th>${esc(S.printCourse)}</th><th>${esc(S.printType)}</th><th>${esc(S.printRoom)}</th>
+      <th>${esc(S.printDuration)}</th><th>${esc(S.printCourse)}</th><th>${esc(S.printType)}</th><th>${esc(S.printRoom)}</th><th>${esc(S.printInstructor)}</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;

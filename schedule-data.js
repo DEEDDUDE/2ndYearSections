@@ -195,6 +195,64 @@ PA | 82 | Mon | 14:00 | 16:50 | 0601
 PA | 83 | Sun | 11:00 | 13:50 | 0601
 `;
 
+export const INSTRUCTORS = `
+# course | section | English name | الاسم العربي   (lecture instructor; labs have none)
+
+# --- Public Health ---
+PH | 1 | Maha Hamde Baker Husseene | مها حمدي بكر الحسيني
+PH | 2 | Bashaer Mohammed N. Mosa Natsheh | بشائر محمد نظمي موسى اشهب
+PH | 4 | Bashaer Mohammed N. Mosa Natsheh | بشائر محمد نظمي موسى اشهب
+PH | 5 | Khuloud Jamal Masoud El-Dajani | خلود جمال مسعود الدجاني
+PH | 6 | Maha Hamde Baker Husseene | مها حمدي بكر الحسيني
+PH | 7 | Bashaer Mohammed N. Mosa Natsheh | بشائر محمد نظمي موسى اشهب
+PH | 8 | Khuloud Jamal Masoud El-Dajani | خلود جمال مسعود الدجاني
+
+# --- Molecular Biology & Genetics ---
+MB | 1 | Ossama Hani Essawi | اسامه هاني احمد عيساوي
+MB | 2 | Suheer Ibraheem Areqat | سهير ابراهيم محمد عريقات
+MB | 4 | Rola Abdel Salam Sami AbGhani | رولا عبد السلام سامي عبد الغني
+MB | 5 | Ossama Hani Essawi | اسامه هاني احمد عيساوي
+MB | 6 | Mai Ibrahim Muhammad Bakr | مي ابراهيم محمد بكر
+MB | 7 | Rola Abdel Salam Sami AbGhani | رولا عبد السلام سامي عبد الغني
+MB | 8 | Suheer Ibraheem Areqat | سهير ابراهيم محمد عريقات
+
+# --- Metabolic Biochemistry ---
+BC | 1 | Ossama Hani Essawi | اسامه هاني احمد عيساوي
+BC | 2 | Kifaya Azmi M. Suleiman | كفاية عزمي محمد سليمان
+BC | 4 | Saed Abdl Rahman Akkawi | سائد عبد الرحمن احمد عكاوي
+BC | 5 | Ossama Hani Essawi | اسامه هاني احمد عيساوي
+BC | 6 | Mai Ibrahim Muhammad Bakr | مي ابراهيم محمد بكر
+BC | 7 | Mai Ibrahim Muhammad Bakr | مي ابراهيم محمد بكر
+BC | 8 | Saed Abdl Rahman Akkawi | سائد عبد الرحمن احمد عكاوي
+
+# --- General Microbiology ---
+MC | 1 | Murad Abdallah Ahmad Ibrahim | مراد عبد الله احمد ابراهيم
+MC | 2 | Heba Khaled Abdel Jawad Hamed | هبة خالد عبد الجواد حامد
+MC | 4 | Ibrahim Sulieman Mohammad Al-Abasi | ابراهيم سليمان محمد العباسي
+MC | 5 | Murad Abdallah Ahmad Ibrahim | مراد عبد الله احمد ابراهيم
+MC | 6 | Murad Abdallah Ahmad Ibrahim | مراد عبد الله احمد ابراهيم
+MC | 7 | Ibrahim Sulieman Mohammad Al-Abasi | ابراهيم سليمان محمد العباسي
+MC | 8 | Heba Khaled Abdel Jawad Hamed | هبة خالد عبد الجواد حامد
+
+# --- General Pathology ---
+PA | 1 | Rahma Deik | رحمة ديك
+PA | 2 | Rahma Deik | رحمة ديك
+PA | 4 | Baraa Wafeek Mousa Hmedat | براء وفيق موسى حميدات
+PA | 5 | Baraa Wafeek Mousa Hmedat | براء وفيق موسى حميدات
+PA | 6 | Rahma Deik | رحمة ديك
+PA | 7 | Rahma Deik | رحمة ديك
+PA | 8 | Baraa Wafeek Mousa Hmedat | براء وفيق موسى حميدات
+
+# --- General Pharmacology ---  (portal lists "T.C." for 4, 5, 6 — that is Nidaa)
+PM | 1 | Hussein Hallak | حسين عثمان حسين حلاق
+PM | 2 | Bilal Fayiq Mohammad Salih | بلال فايق محمد صالح
+PM | 4 | Nidaa | نداء
+PM | 5 | Nidaa | نداء
+PM | 6 | Nidaa | نداء
+PM | 7 | Afnan Husein Mustafa Atallah | افنان حسين مصطفى عطا الله
+PM | 8 | Afnan Husein Mustafa Atallah | افنان حسين مصطفى عطا الله
+`;
+
 export const SETTINGS = {
   days:               ["Sat", "Sun", "Mon", "Tue", "Wed"],
   sectionsAvailable:  [1, 2, 4, 5, 6, 7, 8],   // section 3 does not exist
