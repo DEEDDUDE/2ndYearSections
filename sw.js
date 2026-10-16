@@ -1,6 +1,6 @@
 // Offline shell. Files are cached on install and refreshed network-first, so
 // a deploy (or a data fix) shows on the next open; offline falls back to cache. Bump VERSION when shipping code changes so old caches are dropped.
-const VERSION = "v8";
+const VERSION = "v11";
 const CACHE = `section-picker-${VERSION}`;
 const SHELL = [
   "./", "index.html", "app.js", "builder.js", "styles.css", "schedule-data.js",

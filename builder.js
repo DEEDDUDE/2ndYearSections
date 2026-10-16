@@ -22,38 +22,26 @@ const range = (m) => `${fmt(m.start)}–${fmt(m.end)}`;
 
 export const BSTR = {
   en: {
-    title: "Build your own schedule", printTitle: "My schedule",
-    sub: "Pick any section per course. Clashes show up as you go.",
-    back: "Back to home", tabPick: "Pick", tabWeek: "Week",
-    mySection: "My section", myGroup: "Lab group", fill: "Fill from section", fillHint: "Fills every course from that section, then edit any course.",
-    wholeSection: "Whole section (both lectures)", lec1: "Lecture 1", lec2: "Lecture 2",
-    mixHint: "Tap a whole section, or pick lecture 1 and lecture 2 from different sections.",
-    clear: "Clear all", share: "Copy link", copied: "Link copied",
-    search: "Search doctor, course, room, day…", onlyFit: "Only what fits",
-    notTaking: "Not taking", lecture: "Lecture", lab: "Lab", labs: "Labs", section: "Section",
-    fits: "Fits", overlaps: (x, d, t) => `Overlaps ${x} · ${d} ${t}`, more: (n) => ` +${n}`,
-    yourClash: "Your picks clash.", empty: "Pick a section to see your week.",
-    noMatch: "Nothing matches — clear the search or the filters.",
-    picked: (n, m) => `${n} of ${m} courses`, anyDoctor: "Any doctor", doctor: "Doctor",
-    fullWeek: "Full week", lectureWeek: "Lecture week", roomNone: "room not published",
-    ics: "Add to calendar (.ics)",
+    title: "My schedule", printTitle: "My schedule",
+    mySection: "Section", myGroup: "Lab group", lec1: "Lecture 1", lec2: "Lecture 2",
+    clearAll: "Clear all", clear: "Clear", share: "Copy link", copied: "Copied",
+    search: "Search", onlyFit: "Only what fits", sameDoc: "Same doctor only", lecture: "Lecture", lab: "Lab", labs: "Labs", sec: "Sec",
+    clashWith: (x, d, t) => `× ${x} · ${d} ${t}`, more: (n) => ` +${n}`,
+    yourClash: "Clash", noMatch: "No match", anyDoctor: "Any", doctor: "Doctor",
+    fullWeek: "Full week", lectureWeek: "Lecture week", roomNone: "TBA",
+    ics: "Calendar", week: "Week", close: "Close",
+    foot: "Student-made, not official · data from the registration portal",
   },
   ar: {
-    title: "ابنِ جدولك بنفسك", printTitle: "جدولي",
-    sub: "اختر أي شعبة لكل مادة. يظهر التعارض فور اختيارك.",
-    back: "العودة للرئيسية", tabPick: "الاختيار", tabWeek: "الأسبوع",
-    mySection: "شعبتي", myGroup: "مجموعة المختبر", fill: "املأ من الشعبة", fillHint: "يملأ كل المواد من تلك الشعبة، ثم عدّل أي مادة.",
-    wholeSection: "الشعبة كاملة (المحاضرتان)", lec1: "المحاضرة 1", lec2: "المحاضرة 2",
-    mixHint: "اضغط الشعبة كاملة، أو اختر المحاضرة 1 والمحاضرة 2 من شعبتين مختلفتين.",
-    clear: "مسح الكل", share: "نسخ الرابط", copied: "تم نسخ الرابط",
-    search: "ابحث عن دكتور أو مادة أو قاعة أو يوم…", onlyFit: "المناسب فقط",
-    notTaking: "لن أدرسها", lecture: "محاضرة", lab: "مختبر", labs: "المختبرات", section: "شعبة",
-    fits: "مناسبة", overlaps: (x, d, t) => `تتعارض مع ${x} · ${d} ${t}`, more: (n) => ` +${n}`,
-    yourClash: "اختياراتك متعارضة.", empty: "اختر شعبة لترى أسبوعك.",
-    noMatch: "لا نتائج — امسح البحث أو المرشحات.",
-    picked: (n, m) => `${n} من ${m} مواد`, anyDoctor: "أي دكتور", doctor: "الدكتور",
-    fullWeek: "الأسبوع كامل", lectureWeek: "أسبوع المحاضرات", roomNone: "القاعة غير معلنة",
-    ics: "أضف إلى التقويم (.ics)",
+    title: "جدولي", printTitle: "جدولي",
+    mySection: "الشعبة", myGroup: "مجموعة المختبر", lec1: "محاضرة 1", lec2: "محاضرة 2",
+    clearAll: "مسح الكل", clear: "مسح", share: "نسخ الرابط", copied: "تم النسخ",
+    search: "بحث", onlyFit: "المناسب فقط", sameDoc: "نفس الدكتور فقط", lecture: "محاضرة", lab: "مختبر", labs: "المختبرات", sec: "شعبة",
+    clashWith: (x, d, t) => `× ${x} · ${d} ${t}`, more: (n) => ` +${n}`,
+    yourClash: "تعارض", noMatch: "لا نتائج", anyDoctor: "الكل", doctor: "الدكتور",
+    fullWeek: "الأسبوع كامل", lectureWeek: "المحاضرات فقط", roomNone: "غير معلنة",
+    ics: "التقويم", week: "الأسبوع", close: "إغلاق",
+    foot: "من إعداد طالب وليس تطبيقًا رسميًا · البيانات من بوابة التسجيل",
   },
 };
 
@@ -179,13 +167,13 @@ function matches(q, c, kind, id) {
 // ---- rendering --------------------------------------------------------
 function meetLine(m, lang) {
   const S = BSTR[lang];
-  return `${esc(dayName(m.day, lang))} ${ltr(range(m))} · ${ltr(esc(m.room === null ? S.roomNone : m.room))}`;
+  return `${esc(dayName(m.day, lang))} ${ltr(range(m))}<span class="bmeetroom"> · ${ltr(esc(m.room === null ? S.roomNone : m.room))}</span>`;
 }
 function statusHTML(clashes, lang) {
   const S = BSTR[lang];
-  if (!clashes.length) return `<span class="bstat ok">${esc(S.fits)}</span>`;
+  if (!clashes.length) return "";
   const f = clashes[0];
-  return `<span class="bstat bad">${S.overlaps(esc(cname(f.other.course, lang)), esc(dayName(f.mine.day, lang)), ltr(range(f.other)))}${clashes.length > 1 ? esc(S.more(clashes.length - 1)) : ""}</span>`;
+  return `<span class="bstat bad">${S.clashWith(ltr(esc(f.other.course)), esc(dayName(f.mine.day, lang)), ltr(range(f.other)))}${clashes.length > 1 ? esc(S.more(clashes.length - 1)) : ""}</span>`;
 }
 function roomsHTML(c, kind, id, lang) {
   const S = BSTR[lang];
@@ -203,7 +191,7 @@ function labOptionHTML(b, c, id, lang) {
   if (b.onlyFit && clashes.length && !sel) return "";
   return `<button class="bopt${sel ? " sel" : ""}${clashes.length ? " clash" : ""}" data-pick data-course="${c}" data-kind="lab" data-id="${id}" aria-pressed="${sel}">
     <span class="bnum">${ltr(String(id))}</span>
-    <span class="bmain"><span class="bwhen">${whenHTML(c, "lab", id, lang)}</span><span class="bwhere">${roomsHTML(c, "lab", id, lang)}</span></span>
+    <span class="bmain"><span class="bwhen">${whenHTML(c, "lab", id, lang)}</span></span>
     ${statusHTML(clashes, lang)}
   </button>`;
 }
@@ -221,8 +209,7 @@ function lecOptionHTML(b, c, id, lang) {
   return `<div class="bcard${whole ? " sel" : ""}">
     <button class="bopt${whole ? " sel" : ""}${all.length ? " clash" : ""}" data-pick data-course="${c}" data-kind="lec" data-id="${id}" aria-pressed="${whole}">
       <span class="bnum">${ltr(String(id))}</span>
-      <span class="bmain">${doc ? `<span class="bdoc">${esc(doc)}</span>` : ""}<span class="bwhere">${esc(S.wholeSection)}</span></span>
-      ${statusHTML(all, lang)}
+      <span class="bmain"><span class="bdoc">${esc(doc)}</span></span>
     </button>
     <div class="bmeets">${parts.map(({ m, i, cl, sel }) => `<button class="bmeet${sel ? " sel" : ""}${cl.length ? " clash" : ""}" data-meet data-course="${c}" data-id="${id}" data-slot="${i}" aria-pressed="${sel}">
         <span class="bmeetn">${esc(i === 0 ? S.lec1 : S.lec2)}</span>
@@ -235,19 +222,22 @@ function lecOptionHTML(b, c, id, lang) {
 function courseHTML(b, c, lang) {
   const S = BSTR[lang];
   const p = b.picks[c] || {};
+  // "same doctor": keep only sections taught by whoever teaches the lecture(s) already picked
+  const pickedDocs = new Set(slotsOf(p).filter((x) => x != null).map((x) => doctorOf(c, x, "en")));
   const lecIds = lecOpts(c).filter((id) => matches(b.q, c, "lec", id)
-    && (!b.instr[c] || doctorOf(c, id, "en") === b.instr[c]));
+    && (!b.instr[c] || doctorOf(c, id, "en") === b.instr[c])
+    && (!b.sameDoc || !pickedDocs.size || pickedDocs.has(doctorOf(c, id, "en"))));
   const labIds = courses[c].hasLab ? labOpts(c).filter((id) => matches(b.q, c, "lab", id)) : [];
   const searching = !!b.q.trim();
   const open = b.open === c || (searching && (lecIds.length || labIds.length));
   if (searching && !lecIds.length && !labIds.length) return "";
   const [s0, s1] = slotsOf(p);
-  const lecSummary = s0 == null && s1 == null ? `${S.lecture}: ${S.notTaking}`
-    : s0 === s1 ? `${S.lecture} ${ltr(String(s0))}`
-    : `${S.lec1} ${ltr(String(s0 ?? "—"))} · ${S.lec2} ${ltr(String(s1 ?? "—"))}`;
+  const lecSummary = s0 == null && s1 == null ? "—"
+    : s0 === s1 ? `${S.sec} ${ltr(String(s0))}`
+    : `${S.sec} ${ltr(`${s0 ?? "—"}+${s1 ?? "—"}`)}`;
   const summary = [
     lecSummary,
-    courses[c].hasLab ? (p.lab != null ? `${S.lab} ${ltr(String(p.lab))}` : `${S.lab}: ${S.notTaking}`) : "",
+    courses[c].hasLab ? (p.lab != null ? `${S.lab} ${ltr(String(p.lab))}` : "") : "",
   ].filter(Boolean).join(" · ");
 
   const doctors = [...new Set(lecOpts(c).map((id) => doctorOf(c, id, "en")).filter(Boolean))];
@@ -267,13 +257,13 @@ function courseHTML(b, c, lang) {
     </button>
     ${open ? `<div class="bbody">
       ${doctorChips}
-      <div class="bgroup"><div class="bgrouphead">${esc(S.lecture)} <span class="bhint">${esc(S.mixHint)}</span>
-        ${s0 != null || s1 != null ? `<button class="bnone" data-none="${c}" data-kind="lec">${esc(S.notTaking)}</button>` : ""}</div>
+      <div class="bgroup"><div class="bgrouphead"><span>${esc(S.lecture)}</span>
+        ${s0 != null || s1 != null ? `<button class="bnone" data-none="${c}" data-kind="lec">${esc(S.clear)}</button>` : ""}</div>
         ${lecIds.map((id) => lecOptionHTML(b, c, id, lang)).join("") || `<p class="bempty">${esc(S.noMatch)}</p>`}
       </div>
-      ${courses[c].hasLab ? `<div class="bgroup"><div class="bgrouphead">${esc(S.labs)}
-        ${p.lab != null ? `<button class="bnone" data-none="${c}" data-kind="lab">${esc(S.notTaking)}</button>` : ""}</div>
-        ${labIds.map((id) => labOptionHTML(b, c, id, lang)).join("") || `<p class="bempty">${esc(S.noMatch)}</p>`}
+      ${courses[c].hasLab ? `<div class="bgroup"><div class="bgrouphead"><span>${esc(S.labs)}</span>
+        ${p.lab != null ? `<button class="bnone" data-none="${c}" data-kind="lab">${esc(S.clear)}</button>` : ""}</div>
+        <div class="blabs">${labIds.map((id) => labOptionHTML(b, c, id, lang)).join("") || `<p class="bempty">${esc(S.noMatch)}</p>`}</div>
       </div>` : ""}
     </div>` : ""}
   </section>`;
@@ -282,50 +272,47 @@ function courseHTML(b, c, lang) {
 export function builderHTML(b, lang) {
   const S = BSTR[lang];
   const combo = comboFromPicks(b.picks);
-  const pickedCourses = COURSE_IDS.filter((c) => slotsOf(b.picks[c]).some((x) => x != null) || (b.picks[c] || {}).lab != null).length;
   const show = hasMeetings(combo, b.view);
-  const notice = combo.valid ? "" : `<div class="clashnotice"><b>${esc(S.yourClash)}</b><div>${esc(conflictSentence(combo, lang))}</div></div>`;
+  const clashText = combo.valid ? "" : esc(conflictSentence(combo, lang));
+  const notice = combo.valid ? "" : `<div class="clashnotice"><b>${esc(S.yourClash)}</b> ${clashText}</div>`;
   const courseList = COURSE_IDS.map((c) => courseHTML(b, c, lang)).join("");
+  const chips = (list, attr, current) => list.map((n) =>
+    `<button class="bchip" ${attr}="${n}" aria-pressed="${current === n}">${ltr(String(n))}</button>`).join("");
   return `
-  <div class="buildview" data-btab="${b.tab}">
-    ${langToggleHTML(lang)}
-    <div class="appbar">
-      <div class="bunivline">${esc(STRINGS[lang].universityName)} · ${esc(SETTINGS.year[lang])} · ${esc(SETTINGS.term[lang])}</div>
-      <h1>${esc(S.title)}</h1>
-      <div class="sub">${esc(S.sub)} · ${esc(S.picked(pickedCourses, COURSE_IDS.length))}</div>
-    </div>
-    <div class="btabs" role="tablist">
-      <button data-tab="pick" aria-pressed="${b.tab === "pick"}">${esc(S.tabPick)}</button>
-      <button data-tab="week" aria-pressed="${b.tab === "week"}">${esc(S.tabWeek)}${combo.valid ? "" : ` <span class="btabwarn">!</span>`}</button>
+  <div class="buildview${b.sheet ? " sheet-open" : ""}">
+    <div class="btop"><h1>${esc(S.title)}</h1>${langToggleHTML(lang)}</div>
+    <div class="bunivline">${esc(STRINGS[lang].universityName)} · ${esc(SETTINGS.year[lang])} · ${esc(SETTINGS.term[lang])}</div>
+    <div class="bdock">
+      <div class="bmini" data-sheet role="button" tabindex="0" aria-label="${esc(S.week)}">${gridHTML(combo, b.view, false, lang)}</div>
+      ${notice}
     </div>
     <div class="blayout">
       <div class="bpanel">
         <div class="btools">
-          <input class="bsearch" type="search" data-search value="${esc(b.q)}" placeholder="${esc(S.search)}" aria-label="${esc(S.search)}" enterkeyhint="search">
-          <div class="brow bfill">
-            <select class="bsel" data-fillsec aria-label="${esc(S.mySection)}">${SETTINGS.sectionsAvailable.map((n) => `<option value="${n}"${n === (b.fillSec ?? 0) ? " selected" : ""}>${esc(S.mySection)} ${n}</option>`).join("")}</select>
-            <select class="bsel" data-fillgrp aria-label="${esc(S.myGroup)}">${SETTINGS.labGroups.map((n) => `<option value="${n}"${n === (b.fillGrp ?? 0) ? " selected" : ""}>${esc(S.myGroup)} ${n}</option>`).join("")}</select>
-            <button class="bbtn" data-fill>${esc(S.fill)}</button>
-          </div>
-          <div class="bmsg">${esc(S.fillHint)}</div>
           <div class="brow">
-            <label class="bfit"><input type="checkbox" data-onlyfit ${b.onlyFit ? "checked" : ""}> ${esc(S.onlyFit)}</label>
+            <input class="bsearch" type="search" data-search value="${esc(b.q)}" placeholder="${esc(S.search)}" aria-label="${esc(S.search)}" enterkeyhint="search">
+            <details class="bmore"><summary aria-label="…">⋯</summary>
+              <div class="bmenu">
+                <label class="bfit"><input type="checkbox" data-onlyfit ${b.onlyFit ? "checked" : ""}> ${esc(S.onlyFit)}</label>
+                <label class="bfit"><input type="checkbox" data-samedoc ${b.sameDoc ? "checked" : ""}> ${esc(S.sameDoc)}</label>
+                <button class="bbtn" data-clear>${esc(S.clearAll)}</button>
+                <button class="bbtn" data-share>${esc(S.share)}</button>
+                <span class="bmsg" data-msg role="status" aria-live="polite"></span>
+              </div>
+            </details>
           </div>
-          <div class="brow">
-            <button class="bbtn" data-clear>${esc(S.clear)}</button>
-            <button class="bbtn" data-share>${esc(S.share)}</button>
-          </div>
-          <div class="bmsg" data-msg role="status" aria-live="polite"></div>
+          <div class="bchiprow"><span class="bchiplabel">${esc(S.mySection)}</span><div class="bchips">${chips(SETTINGS.sectionsAvailable, "data-chipsec", b.fillSec)}</div></div>
+          <div class="bchiprow"><span class="bchiplabel">${esc(S.myGroup)}</span><div class="bchips">${chips(SETTINGS.labGroups, "data-chipgrp", b.fillGrp)}</div></div>
         </div>
         <div class="bcourses">${courseList || `<p class="bempty">${esc(S.noMatch)}</p>`}</div>
       </div>
       <div class="bweek canvas">
+        <div class="bsheetbar"><button class="bbtn" data-sheetclose>${esc(S.close)}</button></div>
         ${notice}
         <div class="viewtoggle" role="group">
           <button data-bview="withLabs" aria-pressed="${b.view === "withLabs"}">${esc(S.fullWeek)}</button>
           <button data-bview="lecturesOnly" aria-pressed="${b.view === "lecturesOnly"}">${esc(S.lectureWeek)}</button>
         </div>
-        ${combo.count ? "" : `<p class="bempty">${esc(S.empty)}</p>`}
         ${gridHTML(combo, b.view, false, lang)}
         ${combo.count ? instructorsHTML(combo, lang) : ""}
         ${combo.valid && show ? statsHTML(combo, b.view, lang) : ""}
@@ -336,12 +323,14 @@ export function builderHTML(b, lang) {
           <div class="printonly">${scheduleTableHTML(combo, "withLabs", lang)}</div>
           <div class="printonly">${dailyTotalsHTML(combo, "withLabs", lang)}</div>
           <div class="printonly">${printFooterHTML(lang)}</div>
-          <button class="savepdf" data-savepdf>${esc(STRINGS[lang].saveAsPdf)}</button>
+          <div class="bactions">
+            <button class="bbtn" data-savepdf>${esc(STRINGS[lang].saveAsPdf)}</button>
+            <button class="bbtn" data-ics>${esc(S.ics)}</button>
+          </div>
           <div class="savepdf-note">${esc(STRINGS[lang].printDialogHint)}</div>` : ""}
-        ${combo.count ? `<button class="bbtn bics" data-ics>${esc(S.ics)}</button>` : ""}
       </div>
     </div>
-    <div class="bfooter"><div>${esc(STRINGS[lang].footerNote)}</div><div class="disclaimer">${esc(STRINGS[lang].disclaimer)}</div></div>
+    <div class="bfooter">${esc(S.foot)}</div>
   </div>`;
 }
 
@@ -378,10 +367,19 @@ export function wireBuilder(root, b, h) {
 
   root.querySelectorAll(".langtoggle button[data-lang]").forEach((el) =>
     el.addEventListener("click", () => h.setLang(el.dataset.lang)));
-  root.querySelectorAll("[data-tab]").forEach((el) => el.addEventListener("click", () => { b.tab = el.dataset.tab; h.rerender(); }));
   root.querySelectorAll("[data-bview]").forEach((el) => el.addEventListener("click", () => { b.view = el.dataset.bview; h.rerender(); }));
+
+  // phone: the docked mini week opens the full week as a sheet
+  const mini = root.querySelector("[data-sheet]");
+  const openSheet = () => { b.sheet = true; h.rerender(); };
+  mini?.addEventListener("click", openSheet);
+  mini?.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(); } });
+  root.querySelector("[data-sheetclose]")?.addEventListener("click", () => { b.sheet = false; h.rerender(); });
+
   root.querySelectorAll("[data-open]").forEach((el) => el.addEventListener("click", () => {
-    b.open = b.open === el.dataset.open ? null : el.dataset.open; h.rerender();
+    b.open = b.open === el.dataset.open ? null : el.dataset.open;
+    h.rerender();
+    if (b.open) requestAnimationFrame(() => document.querySelector(".bcourse.open")?.scrollIntoView({ block: "start" }));
   }));
   root.querySelectorAll("[data-pick]").forEach((el) => el.addEventListener("click", () => {
     const c = el.dataset.course, k = el.dataset.kind, id = +el.dataset.id;
@@ -405,11 +403,12 @@ export function wireBuilder(root, b, h) {
     b.instr[el.dataset.doc] = el.dataset.name && b.instr[el.dataset.doc] !== el.dataset.name ? el.dataset.name : null;
     h.rerender();
   }));
+  root.querySelector("[data-samedoc]")?.addEventListener("change", (e) => { b.sameDoc = e.target.checked; h.rerender(); });
   root.querySelector("[data-onlyfit]")?.addEventListener("change", (e) => { b.onlyFit = e.target.checked; h.rerender(); });
-  root.querySelector("[data-fillsec]")?.addEventListener("change", (e) => { b.fillSec = +e.target.value; });
-  root.querySelector("[data-fillgrp]")?.addEventListener("change", (e) => { b.fillGrp = +e.target.value; });
-  root.querySelector("[data-fill]")?.addEventListener("click", () => {
-    const sec = +root.querySelector("[data-fillsec]").value, grp = +root.querySelector("[data-fillgrp]").value;
+
+  // section chip: fill every course from that section; lab-group chip: swap the labs only
+  root.querySelectorAll("[data-chipsec]").forEach((el) => el.addEventListener("click", () => {
+    const sec = +el.dataset.chipsec, grp = b.fillGrp || 1;
     b.fillSec = sec; b.fillGrp = grp;
     b.picks = {};
     for (const c of COURSE_IDS) {
@@ -417,9 +416,18 @@ export function wireBuilder(root, b, h) {
       const code = sec * 10 + grp;
       b.picks[c] = { l: [lec, lec], lab: courses[c].hasLab && labOpts(c).includes(code) ? code : null };
     }
-    b.open = null; b.tab = "week"; change();
-  });
-  root.querySelector("[data-clear]")?.addEventListener("click", () => { b.picks = {}; b.instr = {}; b.q = ""; change(); });
+    b.open = null; change();
+  }));
+  root.querySelectorAll("[data-chipgrp]").forEach((el) => el.addEventListener("click", () => {
+    b.fillGrp = +el.dataset.chipgrp;
+    if (b.fillSec) for (const c of COURSE_IDS) {
+      const code = b.fillSec * 10 + b.fillGrp;
+      if (courses[c].hasLab && labOpts(c).includes(code)) (b.picks[c] ||= {}).lab = code;
+    }
+    change();
+  }));
+
+  root.querySelector("[data-clear]")?.addEventListener("click", () => { b.picks = {}; b.instr = {}; b.q = ""; b.fillSec = b.fillGrp = null; change(); });
   root.querySelector("[data-share]")?.addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(location.href); msg(S.copied); } catch { msg(location.href); }
   });
@@ -430,15 +438,13 @@ export function wireBuilder(root, b, h) {
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   });
   const search = root.querySelector("[data-search]");
-  if (search) {
-    search.addEventListener("input", () => {
-      b.q = search.value;
-      const pos = search.selectionStart;
-      h.rerender();
-      const again = document.querySelector("[data-search]");
-      again?.focus(); try { again?.setSelectionRange(pos, pos); } catch { /* not supported */ }
-    });
-  }
+  search?.addEventListener("input", () => {
+    b.q = search.value;
+    const pos = search.selectionStart;
+    h.rerender();
+    const again = document.querySelector("[data-search]");
+    again?.focus(); try { again?.setSelectionRange(pos, pos); } catch { /* not supported */ }
+  });
   root.querySelector("[data-savepdf]")?.addEventListener("click", h.savePdf);
-  root.querySelectorAll(".grid .block").forEach((el) => el.addEventListener("click", () => h.openPopover(el)));
+  root.querySelectorAll(".bweek .grid .block").forEach((el) => el.addEventListener("click", () => h.openPopover(el)));
 }

@@ -1,7 +1,6 @@
 // ============================================================
-//  STEP 1 — data engine. No styling yet.
-//  Parses schedule-data.js, builds all 21 combos, computes stats.
-//  Everything downstream reads from buildCombos().
+//  Data engine: parses schedule-data.js into courses, lectures, labs
+//  and instructors, and computes per-week stats. Rendering is below.
 // ============================================================
 
 import { COURSES, LECTURES, LABS, INSTRUCTORS, SETTINGS } from "./schedule-data.js";
@@ -105,46 +104,6 @@ export function stats(blocks) {
 
 export const overlaps = (a, b) => a.day === b.day && a.start < b.end && b.start < a.end;
 
-// ---- combos -------------------------------------------------
-export function buildCombos() {
-  const list = [];
-  for (const section of SETTINGS.sectionsAvailable) {
-    for (const group of SETTINGS.labGroups) {
-      const labCode = section * 10 + group;
-      const lec = lectures.filter((l) => l.section === section).map((l) => ({ ...l, kind: "lecture" }));
-      const lb = labs.filter((l) => l.labCode === labCode).map((l) => ({ ...l, kind: "lab" }));
-      const all = [...lec, ...lb];
-      const conflicts = [];
-      for (let i = 0; i < all.length; i++)
-        for (let j = i + 1; j < all.length; j++)
-          if (overlaps(all[i], all[j])) conflicts.push([all[i], all[j]]);
-      list.push({ id: `${section}-${labCode}`, section, group, labCode,
-        valid: conflicts.length === 0, conflicts,
-        lectures: lec, labs: lb,
-        withLabs: stats(all), lecturesOnly: stats(lec) });
-    }
-  }
-  // twins — identical timings AND identical course per slot. Comparing
-  // only start/end/classMin per day previously let two combos that hold
-  // the same time slots with different courses swapped into them (e.g.
-  // 5-51/5-52, where Microbiology and Pathology trade slots) collide
-  // onto the same signature and get falsely flagged as twins — so the
-  // signature must include which course sits in each slot, not just the
-  // slot's shape. items are already start-sorted by stats().
-  const sig = {};
-  list.filter((c) => c.valid).forEach((c) => {
-    const k = SETTINGS.days.map((d) => {
-      const x = c.withLabs.byDay[d];
-      return x ? `${d}:` + x.items.map((it) => `${it.course}:${it.start}-${it.end}`).join(",") : `${d}:-`;
-    }).join("|");
-    (sig[k] ||= []).push(c);
-  });
-  Object.values(sig).forEach((g) => {
-    if (g.length > 1) g.forEach((c) => (c.identicalTo = g.filter((x) => x !== c).map((x) => x.id)));
-  });
-  return list;
-}
-
 // Lecture instructors, keyed "PH-1" (course-section). Purely descriptive —
 // nothing in the combo/stat engine reads it.
 export const instructors = {};
@@ -156,9 +115,7 @@ const instructorOf = (m, lang) =>
   m.kind === "lecture" ? instructors[`${m.course}-${m.section}`]?.[lang] ?? "" : "";
 
 // ============================================================
-//  UI LAYER (steps 2–5, phase 2 steps 1–7). Reads buildCombos()
-//  output only. Does NOT touch the parser, stats(), overlaps(),
-//  or buildCombos().
+//  Rendering helpers shared by the builder and the print sheet.
 // ============================================================
 
 export const GRID_START = toMin(SETTINGS.gridStart);
@@ -184,10 +141,8 @@ export const ltr = (html) => `<span class="ltr-data">${html}</span>`;
 // into literal "&lt;span&gt;" text. U+2066/U+2069 (LRI/PDI) are invisible
 // formatting characters, not in esc()'s escaped set, so they survive
 // either path and still force LTR reading order.
-const ltrText = (s) => `⁦${s}⁩`;
-
-// All meetings of a combo, lectures + labs, each already tagged .kind.
 const blocksFor = (combo) => [...combo.lectures, ...combo.labs];
+const ltrText = (s) => `⁦${s}⁩`;
 
 // ---- §19: bilingual strings + digit/duration helpers ---------
 
@@ -195,7 +150,6 @@ const blocksFor = (combo) => [...combo.lectures, ...combo.labs];
 // codes, combo ids, and durations. `lang` stays in these signatures so
 // call sites are uniform; it just no longer selects a digit script.
 export const num = (n, lang) => String(n);
-const cid = (id, lang) => ltr(id);   // e.g. combo id "5-51" — section-labCode, LTR data
 
 // Durations: "6h 50m" in EN, "6س 10د" in AR — Arabic unit letters
 // (hour/minute), Western digits. "Hours and minutes read faster than a
@@ -247,60 +201,24 @@ function joinDays(days, lang) {
 // No text is hardcoded in the markup functions below.
 export const STRINGS = {
   en: {
-    appTitle: "Section Picker",
-    subtitle: (ch, courseN, validN) => `${ch} CH · ${courseN} courses · ${validN} valid options`,
     fullWeek: "Full week",
     lectureWeek: "Lecture week",
-    sort: { section: "Section", deadMin: "Waiting time", worstDayMin: "Shortest day",
-            avgStartMin: "Start time", avgEndMin: "Finish time" },
-    sortGroupLabel: "Sort by",
-    sortBy: (label) => `Sort by ${label}`,
-    hasClash: "Has a clash",
     stat: { worstDayMin: "worst day", deadMin: "waiting", classMin: "in class",
             totalSpanMin: "on campus", avgStartMin: "avg start", avgEndMin: "avg end",
             earlyDays: "early days", lateDays: "late days" },
-    labels: { bestOverall: "Best overall",
-              latestMornings: "Latest mornings", earliestFinishes: "Earliest finishes",
-              mostEven: "Most even days", leastWaiting: "Least waiting",
-              shortDay: "Has a short day", betterExists: "Better version exists",
-              notAvailable: "Not available" },
     freeDay: "Free",
     labTag: "LAB · not weekly",
     labTagShort: "LAB",
     typeLecture: "Lecture",
     typeLab: "Lab",
-    backToList: "Back to list",
-    backToHome: "Back to home",
     universityName: "Al-Quds University",
     close: "Close",
     roomUnknown: "Room not published yet",
-    noCombo: "No combo.",
     problems: (n) => `${n} problem${n > 1 ? "s" : ""} in schedule-data.js`,
     overlaps: "overlaps",
     on: "on",
-    sectionHasClash: (n) => `Section ${n} has a clash.`,
-    cantTakeSection: "You can't take this section as it stands. It may be corrected in a later timetable release.",
-    identicalLectures: (a, b, d) => `${a} and ${b} have identical lectures. The only difference is the labs — and ${a} adds ${d} of waiting.`,
-    switchTo: (id) => `Switch to ${id}`,
-    sameTimings: (ids) => `Same timings as ${ids} — different seat only.`,
-    sameTotals: (a, dayA, b, dayB) => `Same totals — ${a} loads ${dayA}, ${b} loads ${dayB}.`,
-    sameSlotsSwap: (id, a, b) => `Same times as ${id}, but ${a} and ${b} swap slots.`,
-    // intro (§13)
-    offeredSections: "Offered sections",
-    browseAll: "Browse all sections",
-    startFrom: "Or start from what matters to you",
-    footerNote: "Labs do not run every week. Timings from the registration system — verify before registering.",
-    disclaimer: "Made by a student, not an official university tool. All data is copied from the university's registration portal — nothing here is made up. This tool only organizes what registration already shows you.",
-    andNOther: (n) => `and ${n} other${n > 1 ? "s" : ""}`,
-    quickNothingBefore: (t) => `nothing before ${t}`,
-    quickNeverPast: (t) => `never past ${t}`,
-    quickOfGaps: (d) => `${d} of gaps`,
-    quickOneBlock: (day, d) => `${day} is one ${d} block`,
-    quickNoDayOver: (d) => `no day over ${d}`,
-    quickBestOverall: (dead, worst) => `${dead} waiting · no day over ${worst}`,
-    // §9 (original spec) — print stylesheet + PDF export
+    disclaimer: "Student-made, not an official university tool. Data is copied from the registration portal.",
     saveAsPdf: "Save as PDF",
-    portraitHint: "Best saved in portrait",
     printDialogHint: "Turn off \"Headers and footers\" in the print dialog for a clean page",
     printSectionLabs: (section, labCode) => `Section ${section} · Labs ${labCode}`,
     printGenerated: (date) => `Generated ${date}`,
@@ -310,65 +228,27 @@ export const STRINGS = {
     printFirstClass: "First class", printLastClass: "Last class",
     printOnCampus: "On campus", printInClass: "In class", printWaiting: "Waiting",
     printWeekTotal: "Week total",
-    printFooterNote: "Labs do not run every week. Rooms marked ⌁ are unconfirmed. Timings from the registration system — verify before registering.",
+    printFooterNote: "Labs do not run every week. Verify timings with registration.",
   },
   ar: {
-    appTitle: "اختيار الشعبة",
-    subtitle: (ch, courseN, validN) => `${ch} ساعة معتمدة · ${courseN} مواد · ${validN} خياراً متاحاً`,
     fullWeek: "أسبوع كامل",
     lectureWeek: "أسبوع بدون مختبر",
-    sort: { section: "الشعبة", deadMin: "وقت الانتظار", worstDayMin: "أقصر يوم",
-            avgStartMin: "وقت البداية", avgEndMin: "وقت النهاية" },
-    sortGroupLabel: "ترتيب حسب",
-    sortBy: (label) => `ترتيب حسب ${label}`,
-    hasClash: "فيه تعارض",
     stat: { worstDayMin: "أطول يوم", deadMin: "الانتظار", classMin: "داخل الصف",
             totalSpanMin: "في الجامعة", avgStartMin: "متوسط البداية", avgEndMin: "متوسط النهاية",
             earlyDays: "أيام مبكرة", lateDays: "أيام متأخرة" },
-    labels: { bestOverall: "الأفضل إجمالاً",
-              latestMornings: "الأكثر تأخرًا", earliestFinishes: "أبكر نهاية",
-              mostEven: "الأكثر توازنًا", leastWaiting: "أقل انتظار",
-              shortDay: "فيه يوم قصير", betterExists: "يوجد خيار أفضل",
-              notAvailable: "غير متاح" },
     freeDay: "فارغ",
     labTag: "مختبر · ليس أسبوعيًا",
     labTagShort: "مختبر",
     typeLecture: "محاضرة",
     typeLab: "مختبر",
-    backToList: "الرجوع إلى القائمة",
-    backToHome: "الرجوع إلى الرئيسية",
     universityName: "جامعة القدس",
     close: "إغلاق",
     roomUnknown: "القاعة غير معلنة بعد",
-    noCombo: "لا يوجد خيار.",
     problems: (n) => `${n} مشكلة في بيانات الجدول`,
     overlaps: "يتعارض مع",
     on: "في",
-    sectionHasClash: (n) => `الشعبة ${n} فيها تعارض.`,
-    cantTakeSection: "لا يمكنك اختيار هذه الشعبة كما هي حاليًا. قد يتم تصحيحها في نسخة لاحقة من الجدول.",
-    identicalLectures: (a, b, d) => `لكل من ${a} و${b} نفس المحاضرات تمامًا. الفرق الوحيد هو المختبر — وتضيف ${a} ${d} من وقت الانتظار.`,
-    switchTo: (id) => `التبديل إلى ${id}`,
-    sameTimings: (ids) => `نفس التوقيت في ${ids} — فقط مقعد مختلف.`,
-    sameTotals: (a, dayA, b, dayB) => `نفس الإجمالي — ${a} يُحمَّل يوم ${dayA}، و${b} يوم ${dayB}.`,
-    sameSlotsSwap: (id, a, b) => `نفس الأوقات مثل ${id}، لكن ${a} و${b} يتبادلان المواعيد.`,
-    // intro (§13)
-    offeredSections: "الشعب المطروحة",
-    browseAll: "تصفح جميع الشعب",
-    startFrom: "أو ابدأ بما يهمك",
-    footerNote: "لا تُعقد المختبرات كل أسبوع. التوقيتات من نظام التسجيل — يرجى التأكد منها قبل التسجيل.",
-    disclaimer: "هذه أداة أنشأها طالب، وليست أداة رسمية تابعة للجامعة. جميع البيانات منسوخة من بوابة التسجيل الجامعية — لا شيء هنا من تأليفنا. مهمة الأداة الوحيدة هي تنظيم ما يعرضه نظام التسجيل أصلاً.",
-    andNOther: (n) => `و${n} أخرى`,
-    quickNothingBefore: (t) => `لا شيء قبل ${t}`,
-    quickNeverPast: (t) => `لا يتجاوز ${t}`,
-    quickOfGaps: (d) => `${d} انتظار`,
-    quickOneBlock: (day, d) => `${day} كتلة واحدة مدتها ${d}`,
-    quickNoDayOver: (d) => `لا يوم يتجاوز ${d}`,
-    quickBestOverall: (dead, worst) => `${dead} انتظار · لا يوم يتجاوز ${worst}`,
-    // §9 (original spec) — print stylesheet + PDF export. Digits stay
-    // Western here too (§19's later decision overrides this doc's own
-    // original Arabic-Indic example, "الشعبة ٢ · مختبرات ٢١").
+    disclaimer: "من إعداد طالب وليس أداة رسمية للجامعة. البيانات منسوخة من بوابة التسجيل.",
     saveAsPdf: "حفظ كملف PDF",
-    portraitHint: "يُفضّل الحفظ بالوضع الرأسي",
     printDialogHint: "أوقف «الرؤوس والتذييلات» في نافذة الطباعة للحصول على صفحة نظيفة",
     printSectionLabs: (section, labCode) => `الشعبة ${section} · مختبرات ${labCode}`,
     printGenerated: (date) => `أُنشئ في ${date}`,
@@ -378,7 +258,7 @@ export const STRINGS = {
     printFirstClass: "أول حصة", printLastClass: "آخر حصة",
     printOnCampus: "في الجامعة", printInClass: "داخل الصف", printWaiting: "الانتظار",
     printWeekTotal: "إجمالي الأسبوع",
-    printFooterNote: "لا تُعقد المختبرات كل أسبوع. القاعات المشار إليها بـ⌁ غير مؤكدة. التوقيتات من نظام التسجيل — يرجى التأكد منها قبل التسجيل.",
+    printFooterNote: "لا تُعقد المختبرات كل أسبوع. تأكد من المواعيد عبر التسجيل.",
   },
 };
 
@@ -560,79 +440,6 @@ export function conflictSentence(combo, lang = "en") {
   }).join(" ");
 }
 
-// ---- sort control (§16) --------------------------------------
-// Single mode, always ascending: waiting time least→most, shortest day
-// first, start time earliest first, finish time earliest first.
-export const SORTS = [
-  { key: "section" },
-  { key: "deadMin" },
-  { key: "worstDayMin" },
-  { key: "avgStartMin" },
-  { key: "avgEndMin" },
-];
-
-function sortValue(c, view, key) {
-  return key === "section" ? c.section * 10 + c.group : c[view][key];
-}
-
-export function sortCombos(list, view, key) {
-  return [...list].sort((a, b) => sortValue(a, view, key) - sortValue(b, view, key));
-}
-
-export function sortControlHTML(sortKey, lang = "en") {
-  const S = STRINGS[lang];
-  return `<div class="sortctl" role="group" aria-label="${esc(S.sortGroupLabel)}">
-    ${SORTS.map((s) => {
-      const active = s.key === sortKey;
-      const label = S.sort[s.key];
-      return `<button data-sort="${s.key}" aria-pressed="${active}" title="${esc(S.sortBy(label))}">
-        ${esc(label)}
-      </button>`;
-    }).join("")}
-  </div>`;
-}
-
-// Rail lists Available combos first, sorted by the active control (tier
-// order overrides sort). The clashing tier is always last, in fixed
-// section order — it has no stats to sort by — and is viewable, not
-// selectable-for-PDF, but IS clickable to view. `badges` is an
-// id→[labelKey] map from computeBadges().
-export function railHTML(combos, view, selectedId, badges = {}, sortKey = "section", lang = "en") {
-  const S = STRINGS[lang];
-  const available = sortCombos(combos.filter((c) => c.valid), view, sortKey);
-  const clashing = combos.filter((c) => !c.valid)
-    .sort((a, b) => a.section - b.section || a.group - b.group);
-  const codeText = (c) => ltr(`${num(c.section, lang)} / ${num(c.labCode, lang)}`);
-
-  // §21 — mobile rows also show two stats (waiting, longest day); CSS
-  // hides .rowstats on desktop where the rail stays compact.
-  const item = (c) => {
-    const s = c[view];
-    const labels = (badges[c.id] || [])
-      .map((k) => `<span class="badge">${esc(S.labels[k])}</span>`).join("");
-    return `<li class="item${c.id === selectedId ? " selected" : ""}"
-                data-id="${c.id}" role="button" tabindex="0">
-              <span class="code">${codeText(c)}</span>
-              <span class="rowstats">
-                <span><b>${ltr(fmt(s.deadMin))}</b> ${S.stat.deadMin}</span>
-                <span><b>${ltr(fmt(s.worstDayMin))}</b> ${S.stat.worstDayMin}</span>
-              </span>
-              ${labels ? `<span class="badges">${labels}</span>` : ""}
-            </li>`;
-  };
-
-  const clashItem = (c) => `<li class="item clash${c.id === selectedId ? " selected" : ""}"
-              data-id="${c.id}" role="button" tabindex="0"
-              title="${esc(conflictSentence(c, lang))}">
-            <span class="code">${codeText(c)}</span>
-            <span class="badges"><span class="badge status">${esc(S.labels.notAvailable)}</span></span>
-          </li>`;
-
-  return `<ul>${available.map(item).join("")}</ul>
-    ${clashing.length ? `<div class="railhead">${esc(S.hasClash)}</div>
-      <ul>${clashing.map(clashItem).join("")}</ul>` : ""}`;
-}
-
 // Live stat strip for the selected combo in the active view.
 export function statsHTML(combo, view, lang = "en") {
   const S = STRINGS[lang];
@@ -655,239 +462,6 @@ export function statsHTML(combo, view, lang = "en") {
 // so it recomputes on the Full/Lecture-week toggle. Ties share.
 // Labels themselves live in STRINGS[lang].labels (§19).
 
-export function computeBadges(combos, view) {
-  const valid = combos.filter((c) => c.valid);
-  const S = (c) => c[view];
-  const vals = (key) => valid.map((c) => S(c)[key]);
-  const min = (key) => Math.min(...vals(key));
-  const max = (key) => Math.max(...vals(key));
-
-  // lightest day = smallest single-day spanMin anywhere across combos
-  const lightestDay = (c) => Math.min(...SETTINGS.days
-    .map((d) => S(c).byDay[d]?.spanMin ?? Infinity));
-  const minLightest = Math.min(...valid.map(lightestDay));
-
-  const lateStart = max("avgStartMin");   // latestMornings
-  const earlyEnd  = min("avgEndMin");      // earliestFinishes
-  const bestWorst = min("worstDayMin");    // mostEven
-  const bestDead  = min("deadMin");        // leastWaiting
-
-  const map = {};
-  for (const c of valid) {
-    const s = S(c), b = [];
-    if (s.avgStartMin === lateStart) b.push("latestMornings");
-    if (s.avgEndMin === earlyEnd) b.push("earliestFinishes");
-    if (s.worstDayMin === bestWorst) b.push("mostEven");
-    if (s.deadMin === bestDead) b.push("leastWaiting");
-    if (lightestDay(c) === minLightest) b.push("shortDay");
-    // betterExists: a sibling in the same section beats it on deadMin
-    if (valid.some((x) => x !== c && x.section === c.section && S(x).deadMin < s.deadMin))
-      b.push("betterExists");
-    map[c.id] = b;
-  }
-  return map;
-}
-
-// Sibling comparison inside the same section — same lectures, only the
-// lab group differs. Returns the best sibling (lowest deadMin) or null.
-export function computeNudge(combo, combos, view) {
-  if (!combo.valid) return null;
-  const S = (c) => c[view];
-  const better = combos
-    .filter((c) => c.valid && c.section === combo.section && c !== combo &&
-                   S(c).deadMin < S(combo).deadMin)
-    .sort((a, b) => S(a).deadMin - S(b).deadMin);
-  if (!better.length) return null;
-  const target = better[0];
-  return { targetId: target.id, diffMin: S(combo).deadMin - S(target).deadMin };
-}
-
-// Near-twins: same-section combos that tie on deadMin AND worstDayMin but
-// distribute their spans across different days — same totals, different
-// shape. Returns one chip per distinct sibling shape (byte-identical twins
-// are excluded; they get the twin chip instead). No better/worse framing.
-export function computeShapeChips(combo, combos, view, lang = "en") {
-  if (!combo.valid) return [];
-  const S = (c) => c[view];
-  const span = (c, d) => S(c).byDay[d]?.spanMin ?? 0;
-  const shapeSig = (c) => SETTINGS.days.map((d) => span(c, d)).join(",");
-
-  const seen = new Set();
-  const chips = [];
-  for (const s of combos) {
-    if (!s.valid || s.section !== combo.section || s === combo) continue;
-    if (S(s).deadMin !== S(combo).deadMin || S(s).worstDayMin !== S(combo).worstDayMin) continue;
-    const sig = shapeSig(s);
-    if (sig === shapeSig(combo) || seen.has(sig)) continue;   // identical shape → skip / dedupe
-    seen.add(sig);
-    // the day each combo carries most heavily relative to the other
-    const heaviest = (a, b) => SETTINGS.days
-      .reduce((best, d) => (span(a, d) - span(b, d) > span(a, best) - span(b, best) ? d : best),
-              SETTINGS.days[0]);
-    chips.push({
-      selfDay: dayFull(heaviest(combo, s), lang),
-      siblingId: s.id,
-      siblingDay: dayFull(heaviest(s, combo), lang),
-    });
-  }
-  return chips;
-}
-
-// Swapped-slots siblings: same-section combos whose time slots (day +
-// start/end, ignoring which course fills them) are byte-identical to
-// combo's, but the course-to-slot assignment differs — i.e. not a twin
-// (courses per slot differ), but not a computeShapeChips case either
-// (per-day spans tie exactly, since it's literally the same slots).
-// Which courses actually swapped is derived from the data, never
-// hardcoded: any course whose (day,start,end) differs between the two
-// combos is "affected"; only shown when exactly two are affected, since
-// that's the one case with an unambiguous "A and B swap slots" reading.
-export function computeSwapChips(combo, combos, view, lang = "en") {
-  if (!combo.valid) return [];
-  const S = (c) => c[view];
-  const slotSig = (c) => SETTINGS.days.map((d) => {
-    const x = S(c).byDay[d];
-    return x ? `${d}:` + x.items.map((it) => `${it.start}-${it.end}`).join(",") : `${d}:-`;
-  }).join("|");
-  const courseAtSlot = (c) => {
-    const m = {};
-    for (const d of SETTINGS.days) for (const it of S(c).byDay[d]?.items ?? []) m[`${d}:${it.start}-${it.end}`] = it.course;
-    return m;
-  };
-
-  const mySlots = slotSig(combo);
-  const myMap = courseAtSlot(combo);
-  const seen = new Set();
-  const chips = [];
-  for (const s of combos) {
-    if (!s.valid || s.section !== combo.section || s === combo) continue;
-    if (slotSig(s) !== mySlots) continue;           // different time shape entirely
-    const theirMap = courseAtSlot(s);
-    const affected = new Set();
-    for (const key of Object.keys(myMap)) if (myMap[key] !== theirMap[key]) { affected.add(myMap[key]); affected.add(theirMap[key]); }
-    if (affected.size !== 2) continue;               // twin (0) or a 3+-way reshuffle (ambiguous to phrase) — skip
-    const [a, b] = [...affected].sort();
-    const dedupeKey = `${a}|${b}`;
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-    chips.push({ siblingId: s.id, courseA: courseName(a, lang), courseB: courseName(b, lang) });
-  }
-  return chips;
-}
-
-// Nudge card + quiet twin / shape chips for the selected combo.
-export function nudgeHTML(combo, combos, view, lang = "en") {
-  const S = STRINGS[lang];
-  let out = "";
-  const n = computeNudge(combo, combos, view);
-  if (n) {
-    out += `<div class="nudge">
-      <b>${S.labels.betterExists}.</b>
-      <div>${S.identicalLectures(cid(combo.id, lang), cid(n.targetId, lang), ltr(durText(n.diffMin, lang)))}</div>
-      <button data-switch="${n.targetId}">${S.switchTo(cid(n.targetId, lang))}</button>
-    </div>`;
-  }
-  if (combo.identicalTo?.length) {
-    out += `<div class="twinchip">${S.sameTimings(combo.identicalTo.map((id) => cid(id, lang)).join(", "))}</div>`;
-  }
-  for (const s of computeShapeChips(combo, combos, view, lang)) {
-    out += `<div class="shapechip">${S.sameTotals(cid(combo.id, lang), s.selfDay, cid(s.siblingId, lang), s.siblingDay)}</div>`;
-  }
-  for (const s of computeSwapChips(combo, combos, view, lang)) {
-    out += `<div class="swapchip">${S.sameSlotsSwap(cid(s.siblingId, lang), esc(s.courseA), esc(s.courseB))}</div>`;
-  }
-  return out;
-}
-
-// ---- STEP 4: clash notice (§14) ------------------------------
-// Shown above the grid only for the clashing tier. Generated entirely
-// from combo.conflicts — if the data is corrected and the section comes
-// back clean, combo.valid flips true and this returns "" on its own.
-export function noticeHTML(combo, lang = "en") {
-  if (combo.valid) return "";
-  const S = STRINGS[lang];
-  return `<div class="clashnotice">
-    <b>${esc(S.sectionHasClash(ltrText(num(combo.section, lang))))}</b>
-    <div>${esc(conflictSentence(combo, lang))}</div>
-    <div>${esc(S.cantTakeSection)}</div>
-  </div>`;
-}
-
-// ---- §13: intro screen — computed quick-picks -----------------
-// Quick picks reuse the same ranking logic as computeBadges(), always
-// against Full week: the intro has no view toggle, and its own mockup
-// numbers are unambiguously Full-week figures (verified against §5).
-const QUICK_ORDER = ["bestOverall", "latestMornings", "earliestFinishes", "leastWaiting", "shortDay", "mostEven"];
-
-// "Best overall" isn't any single badge — every other card is the winner
-// on ONE axis, which is exactly what makes it not a well-rounded pick on
-// its own. This combines the two headline stats (deadMin, the tool's own
-// stated primary cost; worstDayMin, the balance/evenness measure behind
-// "mostEven") into one score: rank each combo on each axis by its DISTINCT
-// value (so ties share a rank), sum the two ranks, lowest total wins.
-// Ties broken by section number, same as every other quick-pick category.
-function computeBestOverall(combos, view) {
-  const valid = combos.filter((c) => c.valid);
-  const S = (c) => c[view];
-  const rankOf = (key) => {
-    const distinct = [...new Set(valid.map((c) => S(c)[key]))].sort((a, b) => a - b);
-    return (c) => distinct.indexOf(S(c)[key]);
-  };
-  const rankDead = rankOf("deadMin"), rankWorst = rankOf("worstDayMin");
-  let best = null, bestScore = Infinity;
-  for (const c of valid) {
-    const score = rankDead(c) + rankWorst(c);
-    const better = score < bestScore ||
-      (score === bestScore && best && c.section * 10 + c.group < best.section * 10 + best.group);
-    if (best === null || better) { bestScore = score; best = c; }
-  }
-  return best;
-}
-
-// On a tie, the first pick is by section number; each LATER category
-// skips any combo already used as an earlier category's headline, so
-// the cards point at distinct combos ("start from what matters to you"
-// — several different starting points, not one repeated).
-export function computeQuickPicks(combos, lang = "en") {
-  const S = STRINGS[lang];
-  const badges = computeBadges(combos, "withLabs");
-  const byKey = {};
-  for (const [id, keys] of Object.entries(badges)) for (const k of keys) (byKey[k] ||= []).push(id);
-  const combo = (id) => combos.find((c) => c.id === id);
-  const bySectionGroup = (ids) => [...ids].sort((a, b) => {
-    const ca = combo(a), cb = combo(b);
-    return ca.section - cb.section || ca.group - cb.group;
-  });
-  const bestOverall = computeBestOverall(combos, "withLabs");
-
-  const used = new Set();
-  return QUICK_ORDER.map((key) => {
-    const tie = key === "bestOverall"
-      ? (bestOverall ? [bestOverall.id] : [])
-      : bySectionGroup(byKey[key] || []);
-    if (!tie.length) return null;
-    const winnerId = tie.find((id) => !used.has(id)) ?? tie[0];
-    used.add(winnerId);
-    const winner = combo(winnerId);
-    const s = winner.withLabs;
-    // fact strings get esc()'d as a whole in introHTML, so embedded
-    // times/durations use ltrText() (invisible isolate chars), not the
-    // <span>-based ltr() used where content is inserted as raw HTML.
-    let fact;
-    if (key === "bestOverall") fact = S.quickBestOverall(ltrText(durText(s.deadMin, lang)), ltrText(durText(s.worstDayMin, lang)));
-    else if (key === "latestMornings") fact = S.quickNothingBefore(ltrText(fmt(s.earliestStart)));
-    else if (key === "earliestFinishes") fact = S.quickNeverPast(ltrText(fmt(s.latestEnd)));
-    else if (key === "leastWaiting") fact = S.quickOfGaps(ltrText(durText(s.deadMin, lang)));
-    else if (key === "mostEven") fact = S.quickNoDayOver(ltrText(durText(s.worstDayMin, lang)));
-    else {   // shortDay — name the specific day that's light
-      const day = SETTINGS.days.reduce((best, d) =>
-        (s.byDay[d]?.spanMin ?? Infinity) < (s.byDay[best]?.spanMin ?? Infinity) ? d : best, SETTINGS.days[0]);
-      fact = S.quickOneBlock(dayFull(day, lang), ltrText(durText(s.byDay[day].spanMin, lang)));
-    }
-    return { key, comboId: winnerId, extraCount: key === "bestOverall" ? 0 : tie.length - 1, fact };
-  }).filter(Boolean);
-}
-
 // Both options always visible, inactive one dimmed — never a single
 // button that toggles (§19). Rendered on every screen so the language
 // can be switched from wherever the student currently is; index.html
@@ -897,45 +471,6 @@ export function langToggleHTML(lang) {
     <button data-lang="ar" aria-pressed="${lang === "ar"}">العربية</button>
     <span class="langsep" aria-hidden="true">|</span>
     <button data-lang="en" aria-pressed="${lang === "en"}">English</button>
-  </div>`;
-}
-
-// Intro screen: header, "Browse all sections", and the computed
-// quick-pick cards. Cards carry data-combo for click wiring in
-// index.html; the language toggle itself is wired there too.
-export function introHTML(combos, lang = "en") {
-  const S = STRINGS[lang];
-  const valid = combos.filter((c) => c.valid);
-  const totalCH = Object.values(courses).reduce((sum, c) => sum + c.ch, 0);
-  const courseCount = Object.keys(courses).length;
-  const picks = computeQuickPicks(combos, lang);
-
-  const cards = picks.map((p) => {
-    const c = combos.find((x) => x.id === p.comboId);
-    return `<div class="pickcard" data-combo="${p.comboId}" role="button" tabindex="0">
-      <span class="pickbadge">${esc(S.labels[p.key])}</span>
-      <span class="pickcode">${ltr(`${num(c.section, lang)} / ${num(c.labCode, lang)}`)}</span>
-      <span class="pickfact">${esc(p.fact)}</span>
-      ${p.extraCount > 0 ? `<span class="pickmore">${esc(S.andNOther(num(p.extraCount, lang)))}</span>` : ""}
-    </div>`;
-  }).join("");
-
-  return `<div class="intro">
-    ${langToggleHTML(lang)}
-    <div class="introhead">
-      <div class="universityname">${esc(S.universityName)}</div>
-      <div class="introyear">${esc(SETTINGS.year[lang])}</div>
-      <h1>${esc(S.offeredSections)}</h1>
-      <div class="introterm">${esc(SETTINGS.term[lang])}</div>
-      <div class="introsub">${esc(S.subtitle(num(totalCH, lang), num(courseCount, lang), num(valid.length, lang)))}</div>
-    </div>
-    <button class="browseall" data-browse>
-      <span>${esc(S.browseAll)}</span><span class="arrow" aria-hidden="true">→</span>
-    </button>
-    <div class="startfrom">${esc(S.startFrom)}</div>
-    <div class="pickgrid">${cards}</div>
-    <div class="introfooter">${esc(S.footerNote)}</div>
-    <div class="disclaimer">${esc(S.disclaimer)}</div>
   </div>`;
 }
 

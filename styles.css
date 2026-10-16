@@ -9,32 +9,36 @@
    ============================================================ */
 
 :root {
-  /* H&E palette (BUILD-SPEC §8 — do not substitute) */
-  --slide:    #FBF7F4;   /* prepared slide, unstained — page ground */
-  --hema:     #2E2A5C;   /* hematoxylin — primary ink */
-  --hema-lo:  #6B66A8;   /* diluted — secondary text, grid rules */
-  --eosin:    #D4547E;   /* eosin — accent, selection, active */
-  --eosin-lo: #F5D8E2;   /* eosin wash */
-  --void:     #E8E2DD;   /* dead time — visible negative space. Stays
-                             neutral: the signature, must not compete
-                             with six course hues. */
-  --clash:    #E5484D;   /* a real conflict, not a course — always red */
+  /* neutral chrome — colour is reserved for courses, the accent and clashes */
+  --slide:    #FAF8F5;   /* page ground */
+  --card:     #FFFFFF;   /* raised surfaces: inputs, option cards */
+  --hema:     #1F2430;   /* primary ink */
+  --hema-lo:  #555B6B;   /* secondary text (>= 7:1 on the ground) */
+  --eosin:    #3B4BA6;   /* the one accent: selection, links, primary buttons */
+  --eosin-lo: #E4E7F6;
+  --void:     #ECE8E1;   /* free time / gaps — neutral on purpose */
+  --clash:    #D92D20;   /* the only red; always hatched */
+  --rule:     #E3DFD8;
 
-  /* §17 — six real laboratory stains, one per course. Spread across
-     the wheel; iodine/safranin separated on lightness too, so they
-     hold up colour-blind and in greyscale print. */
-  --c-ph: #C08A2E;  /* iodine          — Public Health */
-  --c-mb: #2C6FAF;  /* methylene blue  — Molecular Biology */
-  --c-bc: #1F7A6B;  /* malachite green — Biochemistry */
-  --c-mc: #6A4C93;  /* crystal violet  — Microbiology */
-  --c-pa: #D4547E;  /* eosin           — Pathology */
-  --c-pm: #A03528;  /* safranin        — Pharmacology */
+  /* six course colours, spread in hue and lightness so greyscale print holds */
+  --c-ph: #B7791F;  /* amber   — Public Health */
+  --c-mb: #2C6FAF;  /* blue    — Molecular Biology */
+  --c-bc: #1F7A6B;  /* green   — Biochemistry */
+  --c-mc: #6A4C93;  /* violet  — Microbiology */
+  --c-pa: #B83280;  /* magenta — Pathology */
+  --c-pm: #475569;  /* slate   — Pharmacology */
 
   --display: "Readex Pro", system-ui, sans-serif;
   --body:    "IBM Plex Sans Arabic", system-ui, sans-serif;
   --mono:    "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+}
 
-  --rule: color-mix(in srgb, var(--hema-lo) 28%, var(--slide));
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --slide: #14171F; --card: #1C202B; --hema: #ECEEF4; --hema-lo: #A4AABB;
+    --eosin: #8E9CFF; --eosin-lo: #262C4A; --void: #232733; --clash: #FF6B5E; --rule: #2C3140;
+    --c-ph: #E0A23B; --c-mb: #5FA3E6; --c-bc: #46B8A3; --c-mc: #A98BD6; --c-pa: #E36BAE; --c-pm: #94A3B8;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -54,74 +58,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* positioning anchor for .langtoggle on whichever screen is showing —
-   .intro also sets its own (narrower) anchor when present */
+/* positioning anchor for .langtoggle */
 #app { position: relative; }
 
-/* IBM Plex Mono has no Arabic glyph coverage — it's a Latin/Greek/
-   Cyrillic-only face. Every element below was styled with var(--mono)
-   for its EN "data label" look, but in Arabic mode its content is
-   Arabic WORDS (badges, sort labels, stat labels…), not numbers — so
-   the browser was silently falling back to whatever generic font the
-   OS provides, not the type system actually chosen for this app. That
-   fallback is what read as small/thin/"annoying to look at". Switching
-   these to the Arabic body font (which the type system already loads
-   and sizes for exactly this) plus a small size bump — Arabic
-   conventionally needs to sit ~1px larger than paired Latin text to
-   read at equivalent weight — fixes both at once. Pure-numeric/time
-   elements (.hour, .block .bt, rail item codes, lab codes…) are
-   untouched: they're correct in mono in both languages. */
-html[lang="ar"] .appbar .sub,
-html[lang="ar"] .introyear,
-html[lang="ar"] .introsub,
-html[lang="ar"] .rail .item .rowstats,
-html[lang="ar"] .stats,
-html[lang="ar"] .popovermeta,
-html[lang="ar"] .popoverlab {
-  font-family: var(--body); font-size: 14px;
-}
-html[lang="ar"] .pickbadge,
-html[lang="ar"] .rail .item .badge {
-  font-family: var(--body); font-size: 11px;
-}
-html[lang="ar"] .block .labtag-full,
-html[lang="ar"] .block .labtag-short,
-html[lang="ar"] .void .vd-full,
-html[lang="ar"] .void .vd-short {
-  font-family: var(--body);
-}
-@media print {
-  html[lang="ar"] .printmeta,
-  html[lang="ar"] .printtable {
-    font-family: var(--body);
-  }
-}
-
-/* ---- app bar ---- */
-.appbar { margin-bottom: 16px; }
-.appbar h1 {
-  font-family: var(--display);
-  font-weight: 700; font-size: 26px; letter-spacing: -0.01em;
-  margin: 0 0 2px;
-}
-.appbar .sub { font-family: var(--mono); font-size: 13px; color: var(--hema-lo); }
-
-/* explicit way back to the intro, alongside the browser back button */
-.hometab {
-  display: flex; align-items: center; gap: 6px;
-  background: none; border: none; cursor: pointer; padding: 0;
-  margin-bottom: 10px;
-  font-family: var(--body); font-size: 13px; color: var(--hema-lo);
-}
-.hometab:hover { color: var(--hema); }
-[dir="rtl"] .hometab span { display: inline-block; transform: scaleX(-1); }
-
-/* §21 mobile-only detail header (back arrow + sticky combo id) — hidden
-   above the breakpoint so it never appears in the desktop layout. */
-.detailheader { display: none; }
-
-/* ---- intro screen (§13) ---- */
-.intro { max-width: 720px; margin-inline: auto; position: relative; }
+/* Arabic: Tajawal, no tracking or caps (both split joined letters), and Arabic
+   words never use the mono face (it has no Arabic glyphs). Numbers, times and
+   room codes stay mono through .ltr-data. */
+html[lang="ar"] { --body: "Tajawal", "IBM Plex Sans Arabic", system-ui, sans-serif; --display: "Tajawal", "IBM Plex Sans Arabic", system-ui, sans-serif; }
+html[lang="ar"] body { font-size: 16px; line-height: 1.6; font-weight: 500; }
+html[lang="ar"] * { letter-spacing: 0 !important; text-transform: none !important; }
+.stats,
+.popovermeta,
+.popoverlab,
+.block .labtag-full,
+.block .labtag-short,
+.void .vd-full,
+.void .vd-short,
+.bsum,
+.bwhen,
+.bwhere,
+.bmeetn,
+.bmeetw,
+.bunivline,
+.printmeta,
+.printtable) { font-family: var(--body); }
+html[lang="ar"] :is(.bsum, .bwhen, .bwhere, .bmeetn, .bmeetw, .bstat, .bnone, .bdocchip, .bchip, .bchiplabel, .bgrouphead,
+  .bunivline, .bfooter, .inshead, .insname, .insdoc, .clashnotice, .stats) { font-size: 14px; }
+html[lang="ar"] .bbtn { font-weight: 700; }
+html[lang="ar"] :is(h1, .btitle, .bdoc, .dayhead) { font-weight: 700; }
 
 .langtoggle {
   position: absolute; inset-block-start: 0; inset-inline-end: 0;
@@ -135,64 +99,17 @@ html[lang="ar"] .void .vd-short {
 .langtoggle button[aria-pressed="true"] { color: var(--hema); font-weight: 700; }
 .langtoggle .langsep { color: var(--rule); }
 
-.introhead { text-align: center; padding-block: 40px 8px; }
-.universityname {
-  font-family: var(--display); font-weight: 600; font-size: 16px;
-  color: var(--hema); margin-bottom: 20px;
-}
-.introyear {
-  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--hema-lo);
-}
-.introhead h1 { font-family: var(--display); font-size: 32px; font-weight: 700; margin: 8px 0 2px; }
-.introterm { font-family: var(--body); font-size: 15px; color: var(--hema-lo); margin-bottom: 8px; }
-.introsub { font-family: var(--mono); font-size: 13px; color: var(--hema-lo); }
-
-.browseall {
-  display: flex; align-items: center; justify-content: space-between;
-  width: 100%; margin: 22px 0 10px; padding: 14px 18px;
-  font-family: var(--body); font-size: 16px; cursor: pointer;
-  background: var(--eosin); color: #fff; border: none; border-radius: 4px;
-}
-.browseall .arrow { display: inline-block; }
-[dir="rtl"] .browseall .arrow { transform: scaleX(-1); }
-
-.startfrom {
-  text-align: center; font-family: var(--body); font-size: 14px;
-  color: var(--hema-lo); margin: 24px 0 12px;
-}
-
-.pickgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.pickcard {
-  border: 1px solid var(--rule); border-radius: 4px; padding: 12px;
-  cursor: pointer; background: var(--slide); text-align: start;
-  transition: border-color 0.12s ease;
-}
-.pickcard:hover { border-color: var(--eosin); }
-.pickbadge {
-  display: block; font-family: var(--mono); font-size: 10px; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--hema-lo); margin-bottom: 6px;
-}
-.pickcode { display: block; font-family: var(--mono); font-size: 17px; font-weight: 700; color: var(--hema); }
-.pickfact { display: block; font-family: var(--body); font-size: 13px; color: var(--hema-lo); margin-top: 4px; }
-.pickmore { display: block; font-family: var(--body); font-size: 11px; color: var(--hema-lo); opacity: 0.7; margin-top: 2px; }
-
-.introfooter {
-  text-align: center; font-family: var(--body); font-size: 12px;
-  color: var(--hema-lo); margin-top: 28px; line-height: 1.5;
-}
 .disclaimer {
   text-align: center; font-family: var(--body); font-size: 11px;
   color: var(--hema-lo); opacity: 0.75; margin-top: 10px; line-height: 1.5;
   max-width: 480px; margin-inline: auto;
 }
 
-.pickcard:focus-visible, .browseall:focus-visible, .langtoggle button:focus-visible {
+.langtoggle button:focus-visible {
   outline: 2px solid var(--eosin); outline-offset: 1px;
 }
 
 @media (max-width: 640px) {
-  .pickgrid { grid-template-columns: repeat(2, 1fr); }
   .langtoggle { position: static; justify-content: center; margin-bottom: 12px; }
 }
 
@@ -210,70 +127,9 @@ html[lang="ar"] .void .vd-short {
   background: var(--eosin); color: #fff; border-color: var(--eosin);
 }
 
-/* ---- sort control (§16) — segmented, all five visible ---- */
-.sortctl { display: flex; flex-wrap: wrap; gap: 0; margin-bottom: 10px; }
-.sortctl button {
-  font-family: var(--body); font-size: 12px;
-  padding: 5px 9px; cursor: pointer;
-  background: var(--slide); color: var(--hema-lo);
-  border: 1px solid var(--rule);
-  border-inline-start: none;
-}
-.sortctl button:first-child { border-inline-start: 1px solid var(--rule); border-start-start-radius: 4px; border-end-start-radius: 4px; }
-.sortctl button:last-child { border-start-end-radius: 4px; border-end-end-radius: 4px; }
-.sortctl button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--eosin) 12%, var(--slide));
-  color: var(--eosin); font-weight: 600;
-}
-
 /* ---- two-pane layout ---- */
-.layout { display: flex; gap: 24px; align-items: flex-start; }
-.rail { flex: 0 0 210px; }
+
 .canvas { flex: 1 1 auto; min-width: 0; }
-
-/* ---- option rail ---- */
-.rail ul { list-style: none; margin: 0; padding: 0; }
-.rail .item {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  padding: 8px 10px; margin-bottom: 5px;
-  border: 1px solid var(--rule); border-radius: 4px;
-  cursor: pointer; background: var(--slide);
-  transition: border-color 0.12s ease;
-}
-.rail .item:hover { border-color: var(--hema-lo); }
-.rail .item.selected {
-  border-color: var(--eosin);
-  background: color-mix(in srgb, var(--eosin) 8%, var(--slide));
-}
-.rail .item .code { font-family: var(--mono); font-size: 14px; font-weight: 600; }
-/* §21 — mobile list rows also show waiting + longest day; desktop's
-   rail stays compact (code + badges only), same as before. */
-.rail .item .rowstats {
-  display: none; gap: 4px 14px; flex-wrap: wrap;
-  font-family: var(--mono); font-size: 12px; color: var(--hema-lo);
-}
-.rail .item .rowstats b { font-weight: 700; color: var(--hema); }
-/* §15 — a badge is a word LABEL: mono, uppercase, letterspaced, in the
-   course-neutral ink. Never a chip, pill, or coloured tag. */
-.rail .item .badges { display: flex; flex-wrap: wrap; gap: 4px 10px; }
-.rail .item .badge {
-  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--hema);
-}
-.rail .item .badge.status { color: var(--hema-lo); }
-
-/* the clashing tier — viewable, not selectable-for-PDF, still clickable */
-.rail .item.clash { border-style: dashed; }
-.rail .item.clash .badge.status { color: var(--clash); }
-.rail .item.clash.selected {
-  border-color: var(--clash); border-style: solid;
-  background: color-mix(in srgb, var(--clash) 8%, var(--slide));
-}
-
-.rail .railhead {
-  font-family: var(--body); font-size: 12px; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--hema-lo); margin: 18px 0 6px;
-}
 
 /* ---- week grid ---- */
 /* The grid mirrors with the page: Saturday leftmost in English,
@@ -312,10 +168,10 @@ html[lang="ar"] .void .vd-short {
 .block {
   position: absolute; inset-inline: 3px;
   border: 1px solid color-mix(in srgb, var(--c, var(--hema)) 28%, var(--slide));
-  border-inline-start: 3px solid var(--c, var(--hema));
+  border-inline-start: 4px solid var(--c, var(--hema));
   border-radius: 3px; overflow: hidden;
   padding: 3px 5px; line-height: 1.2;
-  background: color-mix(in srgb, var(--c, var(--hema)) 12%, var(--slide));
+  background: color-mix(in srgb, var(--c, var(--hema)) 14%, var(--card));
   color: var(--hema);
   z-index: 2; opacity: var(--bo, 1);
   transition: border-color 0.12s ease;
@@ -386,14 +242,7 @@ html[lang="ar"] .void .vd-short {
 
 /* ---- save as PDF (§9) — above the stats strip on every screen ---- */
 .printonly { display: none; }
-.savepdf {
-  display: block; width: 100%; margin-top: 16px; padding: 10px 16px;
-  font-family: var(--body); font-size: 14px; font-weight: 600; cursor: pointer;
-  background: var(--slide); color: var(--hema);
-  border: 1px solid var(--hema); border-radius: 4px;
-}
-.savepdf:hover { background: color-mix(in srgb, var(--hema) 6%, var(--slide)); }
-.savepdf-hint { display: none; text-align: center; font-size: 11px; color: var(--hema-lo); margin-top: 4px; }
+
 /* the browser's own print dialog prints a date/URL header+footer unless
    the user turns it off — only they can do that, so tell them how,
    every screen size (unlike the mobile-only landscape hint above) */
@@ -407,20 +256,6 @@ html[lang="ar"] .void .vd-short {
 }
 .stats b { font-weight: 700; color: var(--hema); }
 
-/* ---- nudge + chips ---- */
-.nudge {
-  margin-top: 14px; padding: 12px 14px; border-radius: 4px;
-  border: 1px solid color-mix(in srgb, var(--eosin) 45%, var(--slide));
-  background: color-mix(in srgb, var(--eosin) 6%, var(--slide));
-  font-family: var(--body); font-size: 14px; line-height: 1.45;
-}
-.nudge b { color: var(--eosin); }
-.nudge div { margin: 4px 0 8px; }
-.nudge button {
-  font-family: var(--body); font-size: 14px; cursor: pointer;
-  padding: 6px 14px; border-radius: 4px;
-  background: var(--eosin); color: #fff; border: none;
-}
 .instructors { margin-top: 14px; font-family: var(--body); font-size: 13px; }
 .instructors .inshead {
   font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
@@ -430,10 +265,6 @@ html[lang="ar"] .void .vd-short {
 .instructors li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid var(--rule); }
 .instructors .insname { color: var(--hema-lo); }
 .instructors .insdoc { color: var(--hema); text-align: end; }
-.twinchip, .shapechip, .swapchip {
-  margin-top: 10px; font-family: var(--body); font-size: 13px;
-  color: var(--hema-lo); line-height: 1.4;
-}
 
 /* ---- clash notice (§14) — tied visually to the red hatched blocks
    it explains ---- */
@@ -466,77 +297,18 @@ html[lang="ar"] .void .vd-short {
   .grid.animate .void  { animation: voidIn 0.2s ease both;  animation-delay: var(--d, 0ms); }
 }
 
-/* ---- §20: the two transition moments ----
-   Intro → sections: the outgoing screen is snapshotted into a fixed
-   "ghost" that lifts and fades over 260ms while the real sections
-   screen (already mid-stagger via .grid.animate above) is visible
-   underneath the instant the ghost is created — one continuous
-   movement, not two queued. Back button reverses it (the ghost sinks
-   instead of lifting). JS only ever creates this ghost from an
-   explicit click or a popstate — never on initial load/refresh, so a
-   fresh page-view is always instant, exactly as required. */
-.screen-ghost {
-  position: fixed; inset: 0; overflow: auto;
-  background: var(--slide); padding: 24px; z-index: 50;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .screen-ghost { transition: opacity 260ms ease, transform 260ms ease; }
-  .screen-ghost.leaving { opacity: 0; transform: translateY(-16px); }
-  .screen-ghost.reverse.leaving { transform: translateY(16px); }
-}
-
-/* Quick-pick card → sections: same transition, but the chosen combo's
-   blocks (the whole grid IS that combo) land last and hold a 1px eosin
-   outline for 600ms so the eye lands on the answer. */
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes gridLandOutline {
-    0%, 100% { outline-color: transparent; }
-    15%, 88% { outline-color: var(--eosin); }
-  }
-  .grid.quickpick-land {
-    outline: 1px solid transparent; outline-offset: 2px;
-    animation: gridLandOutline 900ms ease-out;
-    animation-delay: 350ms;   /* roughly when the block stagger settles */
-  }
-}
-
 /* ================================================================
-   §21 — MOBILE LAYOUT (<768px). Desktop above this breakpoint is
-   untouched; everything here is additive/overriding only inside
-   this media query. List and detail become two screens sharing one
-   DOM tree, toggled by [data-mobile-screen] on .sectionsview.
+   Phone (<768px): grid short forms, touch targets, block popover.
    ================================================================ */
 @media (max-width: 767px) {
   body { padding: 10px; }
 
-  /* ---- list <-> detail screen toggle ---- */
-  .sectionsview[data-mobile-screen="detail"] .appbar,
-  .sectionsview[data-mobile-screen="detail"] > .langtoggle {
-    display: none;
-  }
-  .sectionsview[data-mobile-screen="detail"] .detailheader { display: flex; }
-  .sectionsview[data-mobile-screen="list"] .rail { display: block; }
-  .sectionsview[data-mobile-screen="list"] .canvas { display: none; }
-  .sectionsview[data-mobile-screen="detail"] .rail { display: none; }
-  .sectionsview[data-mobile-screen="detail"] .canvas { display: block; }
-  .layout { display: block; }
-  .rail, .canvas { width: 100%; }
+  
+  
+  
 
-  /* ---- detail header: back arrow + sticky combo id ---- */
-  .detailheader {
-    position: sticky; inset-block-start: 0; z-index: 10;
-    align-items: center; gap: 10px; padding-block: 8px;
-    background: var(--slide); border-bottom: 1px solid var(--rule);
-    margin-bottom: 8px;
-  }
-  .backarrow {
-    display: flex; align-items: center; justify-content: center;
-    min-width: 44px; min-height: 44px; flex: 0 0 auto;
-    background: none; border: none; cursor: pointer;
-    font-size: 20px; color: var(--hema);
-  }
-  [dir="rtl"] .backarrow span { display: inline-block; transform: scaleX(-1); }
-  .detailheader-code { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--hema); }
+  
+  
 
   /* ---- Full/Lecture toggle: full-width two-up, sticky under the header ---- */
   .viewtoggle {
@@ -544,23 +316,11 @@ html[lang="ar"] .void .vd-short {
     position: sticky; inset-block-start: 0; z-index: 9;
     background: var(--slide);
   }
-  .sectionsview[data-mobile-screen="detail"] .viewtoggle { inset-block-start: 61px; }
   .viewtoggle button { flex: 1 1 0; min-height: 44px; }
 
-  /* ---- sort: horizontally scrollable chip row, same 5 keys/defaults ---- */
-  .sortctl {
-    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
-    gap: 6px; padding-bottom: 2px;
-  }
-  .sortctl button, .sortctl button:first-child, .sortctl button:last-child {
-    flex: 0 0 auto; min-height: 44px;
-    border-radius: 999px; border: 1px solid var(--rule); border-inline-start: 1px solid var(--rule);
-  }
+  
 
-  /* ---- option rows: full-width, stats visible, 44px+ tall ---- */
-  .rail ul { display: block; }
-  .rail .item { width: 100%; min-height: 44px; margin-bottom: 8px; padding: 12px; }
-  .rail .item .rowstats { display: flex; }
+  
 
   /* ---- grid: two-letter codes, no room text, hour-only axis ---- */
   .timecol { flex-basis: 26px; }
@@ -592,11 +352,8 @@ html[lang="ar"] .void .vd-short {
 
   /* ---- touch targets elsewhere ---- */
   .langtoggle button { min-height: 44px; padding: 10px; }
-  .pickcard { min-height: 44px; }
-  .browseall { min-height: 44px; }
-  .hometab { min-height: 44px; }
-  .savepdf { min-height: 44px; }
-  .savepdf-hint { display: block; }   /* §21 — landscape hint, mobile only */
+  
+  
 
   /* ---- block detail popover — this is also where the room warnings
      become reachable by tap (§21 touch fix) ---- */
@@ -621,29 +378,6 @@ html[lang="ar"] .void .vd-short {
   .popoverwarn { font-family: var(--body); font-size: 13px; color: var(--eosin); margin-top: 4px; }
   .popoverlab { font-family: var(--mono); font-size: 13px; color: var(--hema-lo); margin-top: 8px; }
 
-  /* ---- list <-> detail slide transition ---- */
-  .mobile-slide-ghost {
-    position: fixed; inset: 0; overflow: auto;
-    background: var(--slide); padding: 10px; z-index: 50;
-  }
-}
-
-@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
-  /* Direction follows the PAGE's own rules (unlike the day grid, which
-     never mirrors) — list exits toward inline-start, week enters from
-     inline-end; physical translateX must match the current <html dir>. */
-  .mobile-slide-ghost { transition: transform 260ms ease; }
-  [dir="ltr"] .mobile-slide-ghost.leaving { transform: translateX(-100%); }
-  [dir="ltr"] .mobile-slide-ghost.reverse.leaving { transform: translateX(100%); }
-  [dir="rtl"] .mobile-slide-ghost.leaving { transform: translateX(100%); }
-  [dir="rtl"] .mobile-slide-ghost.reverse.leaving { transform: translateX(-100%); }
-
-  @keyframes slideInFromEnd   { from { transform: translateX(100%); }  to { transform: translateX(0); } }
-  @keyframes slideInFromStart { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-  [dir="ltr"] .sectionsview.slide-in-detail { animation: slideInFromEnd 260ms ease; }
-  [dir="ltr"] .sectionsview.slide-in-list   { animation: slideInFromStart 260ms ease; }
-  [dir="rtl"] .sectionsview.slide-in-detail { animation: slideInFromStart 260ms ease; }
-  [dir="rtl"] .sectionsview.slide-in-list   { animation: slideInFromEnd 260ms ease; }
 }
 
 /* ================================================================
@@ -651,7 +385,7 @@ html[lang="ar"] .void .vd-short {
    window.print() only; no jsPDF/html2canvas (they rasterize and
    wreck Arabic shaping). Single portrait page: chosen combo header,
    week grid, legend, schedule table, daily totals, footer. Everything
-   else — rail, toggles, nudges, badges — hidden.
+   else — controls, toggles — hidden.
    ================================================================ */
 /* A4 portrait, 10mm margin — printable area ≈ 190×277mm ≈ 718×1047px
    at the 96dpi CSS reference browsers use for print layout. Portrait is
@@ -669,15 +403,17 @@ html[lang="ar"] .void .vd-short {
   body { padding: 0; }
   * { box-shadow: none !important; }
 
-  .langtoggle, .hometab, .appbar, .detailheader, .viewtoggle,
-  .rail, .banner, .clashnotice, .stats, .nudge, .twinchip, .shapechip, .swapchip,
-  .savepdf, .savepdf-hint, .savepdf-note, .instructors,
-  .screen-ghost, .mobile-slide-ghost, .popoverscrim {
+  .langtoggle,
+.viewtoggle,
+.banner,
+.clashnotice,
+.stats,
+.savepdf-note,
+.instructors,
+.popoverscrim {
     display: none !important;
   }
 
-  .layout { display: block; }
-  .canvas { width: 100%; }
   .printonly { display: block; }
 
   /* narrow-width grid content — same short forms §21 built for the
@@ -731,114 +467,159 @@ html[lang="ar"] .void .vd-short {
 }
 
 /* ================================================================
-   Builder (#build) — the app's single screen. Desktop: course list on
-   one side, live week on the other. Phone: a Pick / Week tab bar.
+   Builder — the app's single screen. Desktop: course list beside the
+   live week. Phone: a docked mini week stays on screen while you pick;
+   tap it for the full week as a sheet.
    ================================================================ */
 .buildview { max-width: 1180px; margin-inline: auto; position: relative; }
-.bunivline { font-family: var(--mono); font-size: 12px; color: var(--hema-lo); margin-bottom: 4px; }
-.blayout { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; gap: 24px; align-items: start; }
-.btabs { display: none; }
-.btools { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.btop { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.btop h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 28px; }
+.btop .langtoggle { position: static; margin: 0; }
+.bunivline { font-family: var(--mono); font-size: 12px; color: var(--hema-lo); margin: 2px 0 14px; }
+.bdock, .bsheetbar { display: none; }
+.blayout { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 28px; align-items: start; }
+
+.btools { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.brow { display: flex; gap: 8px; align-items: center; }
 .bsearch {
-  width: 100%; padding: 10px 12px; font: inherit; font-size: 16px;   /* 16px: no iOS zoom on focus */
-  border: 1px solid var(--rule); border-radius: 4px; background: #fff; color: var(--hema);
+  flex: 1 1 auto; min-width: 0; padding: 10px 12px; font: inherit; font-size: 16px;   /* 16px: no iOS zoom */
+  border: 1px solid var(--rule); border-radius: 6px; background: var(--card); color: var(--hema);
 }
-.bsearch:focus { outline: 2px solid var(--eosin); outline-offset: 1px; }
-.brow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.bfit { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; min-height: 36px; }
+.bsearch:focus-visible, .bchip:focus-visible, .bopt:focus-visible, .bmeet:focus-visible, .bhead:focus-visible,
+.bbtn:focus-visible, .bmore summary:focus-visible { outline: 2px solid var(--eosin); outline-offset: 2px; }
+.bmore { position: relative; }
+.bmore summary {
+  list-style: none; cursor: pointer; width: 44px; height: 44px; display: grid; place-items: center;
+  border: 1px solid var(--rule); border-radius: 6px; background: var(--card); font-size: 20px; line-height: 1;
+}
+.bmore summary::-webkit-details-marker { display: none; }
+.bmenu {
+  position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 6px); z-index: 30; min-width: 200px;
+  display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--card);
+  border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+.bfit { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; }
+.bmsg { min-height: 16px; font-size: 13px; color: var(--hema-lo); }
+.bchiprow { display: flex; align-items: center; gap: 10px; }
+.bchiplabel { flex: 0 0 76px; font-size: 13px; color: var(--hema-lo); }
+.bchips { display: flex; gap: 6px; overflow-x: auto; padding-block: 2px; scrollbar-width: none; }
+.bchip {
+  flex: 0 0 auto; min-width: 44px; height: 44px; padding: 0 12px; cursor: pointer;
+  font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--hema);
+  background: var(--card); border: 1px solid var(--rule); border-radius: 999px;
+}
+.bchip[aria-pressed="true"] { background: var(--eosin); border-color: var(--eosin); color: var(--slide); }
 .bbtn {
-  font-family: var(--body); font-size: 14px; cursor: pointer; min-height: 40px;
-  padding: 6px 14px; border-radius: 4px; border: 1px solid var(--hema); background: var(--slide); color: var(--hema);
+  font-family: var(--body); font-size: 14px; font-weight: 600; cursor: pointer; min-height: 44px;
+  padding: 6px 16px; border-radius: 6px; border: 1px solid var(--rule); background: var(--card); color: var(--hema);
 }
-.bbtn:hover { background: color-mix(in srgb, var(--hema) 6%, var(--slide)); }
-.bics { margin-top: 12px; }
-.bmsg { min-height: 18px; font-size: 13px; color: var(--hema-lo); }
+.bbtn:hover { border-color: var(--hema-lo); }
 .bempty { color: var(--hema-lo); font-size: 14px; margin: 8px 0; }
 
-.bcourse { border: 1px solid var(--rule); border-inline-start: 4px solid var(--c, var(--hema)); border-radius: 4px; margin-bottom: 8px; background: var(--slide); }
-.bcourse.open { background: color-mix(in srgb, var(--c, var(--hema)) 5%, var(--slide)); }
+.bcourse { border: 1px solid var(--rule); border-inline-start: 4px solid var(--c, var(--hema)); border-radius: 6px; margin-bottom: 8px; background: var(--card); scroll-margin-top: 12px; }
 .bhead {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; width: 100%; min-height: 48px;
-  padding: 10px 12px; background: none; border: none; cursor: pointer; text-align: start; font: inherit; color: var(--hema);
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; width: 100%; min-height: 52px;
+  padding: 12px 14px; background: none; border: none; cursor: pointer; text-align: start; font: inherit; color: var(--hema);
 }
 .btitle { font-weight: 700; font-size: 15px; }
-.bsum { font-family: var(--mono); font-size: 12px; color: var(--hema-lo); margin-inline-start: auto; }
-.bbody { padding: 0 12px 12px; }
-.bgrouphead { display: flex; justify-content: space-between; align-items: center; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--hema-lo); margin: 10px 0 6px; }
-.bnone { font: inherit; font-size: 12px; text-transform: none; letter-spacing: 0; background: none; border: none; color: var(--eosin); cursor: pointer; text-decoration: underline; min-height: 32px; }
-.bdocs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.bdocchip { font: inherit; font-size: 13px; padding: 6px 10px; min-height: 36px; border: 1px solid var(--rule); border-radius: 999px; background: #fff; color: var(--hema); cursor: pointer; }
-.bdocchip[aria-pressed="true"] { background: var(--hema); color: #fff; border-color: var(--hema); }
+.bsum { font-size: 13px; color: var(--hema-lo); margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+.bbody { padding: 0 14px 14px; }
+.bgrouphead { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; color: var(--hema-lo); margin: 12px 0 6px; }
+.bnone { font: inherit; font-size: 13px; background: none; border: none; color: var(--eosin); cursor: pointer; min-height: 44px; padding-inline: 8px; }
+.bdocs { display: flex; gap: 6px; overflow-x: auto; margin-top: 4px; scrollbar-width: none; }
+.bdocchip { flex: 0 0 auto; font: inherit; font-size: 13px; padding: 0 14px; min-height: 44px; border: 1px solid var(--rule); border-radius: 999px; background: var(--card); color: var(--hema); cursor: pointer; }
+.bdocchip[aria-pressed="true"] { background: var(--hema); color: var(--slide); border-color: var(--hema); }
 
 .bopt {
-  display: flex; align-items: flex-start; gap: 10px; width: 100%; margin-bottom: 6px; min-height: 48px;
-  padding: 8px 10px; text-align: start; font: inherit; color: var(--hema); cursor: pointer;
-  background: #fff; border: 1px solid var(--rule); border-radius: 4px;
+  display: flex; align-items: center; gap: 12px; width: 100%; margin-bottom: 6px; min-height: 52px;
+  padding: 8px 12px; text-align: start; font: inherit; color: var(--hema); cursor: pointer;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 6px;
 }
 .bopt:hover { border-color: var(--hema-lo); }
-.bopt.sel { border: 2px solid var(--c, var(--hema)); background: color-mix(in srgb, var(--c, var(--hema)) 10%, #fff); padding: 7px 9px; }
-.bopt.clash:not(.sel) { opacity: 0.7; }
-.bnum { font-family: var(--mono); font-weight: 700; font-size: 16px; min-width: 28px; }
+.bopt.sel, .bcard.sel .bopt { border-color: var(--c, var(--eosin)); box-shadow: inset 0 0 0 1px var(--c, var(--eosin)); background: color-mix(in srgb, var(--c, var(--eosin)) 12%, var(--card)); }
+.bopt.clash:not(.sel) { opacity: 0.65; }
+.bnum { font-family: var(--mono); font-weight: 700; font-size: 17px; min-width: 28px; }
 .bmain { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .bdoc { font-size: 14px; font-weight: 600; }
 .bwhen, .bwhere { font-family: var(--mono); font-size: 12px; color: var(--hema-lo); }
-.bstat { font-size: 12px; text-align: end; max-width: 42%; line-height: 1.3; }
-.bstat.ok { color: var(--c-bc); font-weight: 600; }
+.bstat { font-size: 12px; line-height: 1.3; text-align: end; max-width: 46%; }
 .bstat.bad { color: var(--clash); }
 
-.bfooter { margin-top: 28px; font-size: 12px; color: var(--hema-lo); line-height: 1.5; }
+.blabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.blabs .bopt { margin: 0; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 64px; }
+.blabs .bstat { max-width: none; text-align: start; }
+.blabs .bempty { grid-column: 1 / -1; }
+.bcard { margin-bottom: 8px; }
+.bcard .bopt { min-height: 48px; margin-bottom: 0; border-end-start-radius: 0; border-end-end-radius: 0; }
+.bmeets { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule); border-top: none; border-radius: 0 0 6px 6px; overflow: hidden; background: var(--card); }
+.bcard.sel .bmeets { border-color: var(--c, var(--eosin)); }
+.bmeet {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 52px;
+  padding: 6px 12px; text-align: start; font: inherit; color: var(--hema); cursor: pointer;
+  background: var(--card); border: none; border-inline-start: 1px solid var(--rule);
+}
+.bmeet:first-child { border-inline-start: none; }
+.bmeet.sel { background: color-mix(in srgb, var(--c, var(--eosin)) 16%, var(--card)); box-shadow: inset 0 -3px 0 var(--c, var(--eosin)); }
+.bmeet.clash:not(.sel) { opacity: 0.65; }
+.bmeetn { font-size: 12px; font-weight: 600; color: var(--hema-lo); }
+.bmeetw { font-family: var(--mono); font-size: 12px; }
+.bmeet .bstat { max-width: none; text-align: start; }
+
+.bactions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.bfooter { margin-top: 32px; font-size: 12px; color: var(--hema-lo); text-align: center; }
+
+.freeday {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--hema-lo); pointer-events: none;
+}
+.printfree { color: #555; font-style: italic; }
 .updatetoast {
   position: fixed; inset-inline: 12px; inset-block-end: calc(12px + env(safe-area-inset-bottom)); z-index: 80;
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
-  padding: 10px 14px; background: var(--hema); color: #fff; border-radius: 4px;
+  padding: 10px 14px; background: var(--hema); color: var(--slide); border-radius: 6px;
 }
-.updatetoast button { min-height: 36px; padding: 4px 14px; border: 1px solid #fff; background: none; color: #fff; border-radius: 4px; cursor: pointer; }
+.updatetoast button { min-height: 44px; padding: 4px 14px; border: 1px solid currentColor; background: none; color: inherit; border-radius: 6px; cursor: pointer; }
 
 @media (max-width: 767px) {
-  body { padding-inline: max(10px, env(safe-area-inset-left)); padding-block-end: env(safe-area-inset-bottom); }
+  body { padding-inline: max(12px, env(safe-area-inset-left)); padding-block: 10px calc(16px + env(safe-area-inset-bottom)); }
+  .btop h1 { font-size: 20px; }
+  .bunivline { display: none; }
   .blayout { display: block; }
-  .btabs { display: flex; position: sticky; inset-block-start: 0; z-index: 12; background: var(--slide); margin: 0 0 10px; border-bottom: 1px solid var(--rule); }
-  .btabs button {
-    flex: 1 1 0; min-height: 48px; font: inherit; font-weight: 600; cursor: pointer; color: var(--hema-lo);
-    background: none; border: none; border-bottom: 3px solid transparent;
+
+  /* docked mini week: always in view while picking; tap for the full week */
+  .bdock {
+    display: block; position: sticky; inset-block-start: 0; z-index: 20; margin: 6px -12px 10px;
+    padding: 6px 12px 8px; background: var(--slide); border-bottom: 1px solid var(--rule);
   }
-  .btabs button[aria-pressed="true"] { color: var(--hema); border-bottom-color: var(--eosin); }
-  .btabwarn { display: inline-block; min-width: 18px; text-align: center; border-radius: 9px; background: var(--clash); color: #fff; font-size: 12px; }
-  .buildview[data-btab="pick"] .bweek { display: none; }
-  .buildview[data-btab="week"] .bpanel { display: none; }
-  .buildview .viewtoggle { position: static; }
-  .bstat { max-width: 38%; }
-  .bcourse .bhead { padding-block: 12px; }
+  .bmini { cursor: pointer; }
+  .bmini .grid { border-radius: 6px; }
+  .bmini .dayhead { height: 22px; line-height: 22px; font-size: 12px; }
+  .bmini .daybody { height: 112px; }
+  .bmini .block { padding: 1px 2px; }
+  .bmini .block .bt, .bmini .block .br, .bmini .block .labtag-short, .bmini .block .labcode, .bmini .void span { display: none !important; }
+  .bmini .block .bc-short { font-size: 10px; }
+  .bmini .hour-short { font-size: 9px; }
+  .bmini .block::after { display: none; }
+  .bmini .freeday { font-size: 11px; }
+  .bdock .clashnotice { margin: 6px 0 0; padding: 6px 10px; font-size: 12px; }
+
+  .bcourse { scroll-margin-top: 190px; }
+  .bweek { display: none; }
+  .sheet-open .bweek {
+    display: block; position: fixed; inset: 0; z-index: 60; overflow-y: auto; background: var(--slide);
+    padding: 0 12px calc(24px + env(safe-area-inset-bottom));
+  }
+  .bsheetbar { display: flex; justify-content: flex-end; position: sticky; inset-block-start: 0; z-index: 2; padding: 10px 0; background: var(--slide); }
+  .bweek .viewtoggle { position: static; }
+  .bstat { max-width: 40%; }
+  .bmeetroom { display: none; }
+  .bmenu { inset-inline-end: 0; }
 }
 
 @media print {
-  .buildview .btools, .buildview .btabs, .buildview .bpanel, .buildview .bics,
-  .buildview .bfooter, .buildview .viewtoggle, .buildview .appbar, .buildview .langtoggle,
-  .updatetoast, .banner { display: none !important; }
+  .buildview .btop, .buildview .bunivline, .buildview .bdock, .buildview .btools, .buildview .bpanel,
+  .buildview .bactions, .buildview .bfooter, .buildview .viewtoggle, .buildview .bsheetbar,
+  .buildview .clashnotice, .updatetoast, .banner { display: none !important; }
   .buildview .blayout { display: block; }
-  .buildview .bweek { display: block !important; }
+  .buildview .bweek { display: block !important; position: static !important; overflow: visible !important; padding: 0 !important; }
 }
-.bsel { font: inherit; font-size: 16px; min-height: 40px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 4px; background: #fff; color: var(--hema); }
-.bfill { gap: 6px; }
-.freeday {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  font-family: var(--body); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--hema-lo); pointer-events: none;
-}
-.printfree { color: #555; font-style: italic; }
-.bcard { margin-bottom: 8px; }
-.bcard .bopt { margin-bottom: 0; border-end-start-radius: 0; border-end-end-radius: 0; }
-.bmeets { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule); border-top: none; border-radius: 0 0 4px 4px; overflow: hidden; background: #fff; }
-.bcard.sel .bmeets { border-color: var(--c, var(--hema)); }
-.bmeet {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 52px;
-  padding: 7px 10px; text-align: start; font: inherit; color: var(--hema); cursor: pointer;
-  background: #fff; border: none; border-inline-start: 1px solid var(--rule);
-}
-.bmeet:first-child { border-inline-start: none; }
-.bmeet.sel { background: color-mix(in srgb, var(--c, var(--hema)) 14%, #fff); box-shadow: inset 0 -3px 0 var(--c, var(--hema)); }
-.bmeet.clash:not(.sel) { opacity: 0.7; }
-.bmeetn { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--hema-lo); }
-.bmeetw { font-family: var(--mono); font-size: 12px; }
-.bmeet .bstat { max-width: none; text-align: start; }
-.bhint { display: block; text-transform: none; letter-spacing: 0; font-size: 12px; margin-top: 2px; }
