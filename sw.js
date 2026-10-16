@@ -1,7 +1,7 @@
 // Offline shell. Static files are cached on install; schedule-data.js is
 // served stale-while-revalidate so a data fix reaches students on their next
 // open. Bump VERSION when shipping code changes so old caches are dropped.
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = `section-picker-${VERSION}`;
 const SHELL = [
   "./", "index.html", "app.js", "builder.js", "styles.css", "schedule-data.js",
