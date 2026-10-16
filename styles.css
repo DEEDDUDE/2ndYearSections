@@ -820,3 +820,9 @@ html[lang="ar"] .void .vd-short {
 }
 .bsel { font: inherit; font-size: 16px; min-height: 40px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 4px; background: #fff; color: var(--hema); }
 .bfill { gap: 6px; }
+.freeday {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--body); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--hema-lo); pointer-events: none;
+}
+.printfree { color: #555; font-style: italic; }

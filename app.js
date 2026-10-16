@@ -264,6 +264,7 @@ export const STRINGS = {
               mostEven: "Most even days", leastWaiting: "Least waiting",
               shortDay: "Has a short day", betterExists: "Better version exists",
               notAvailable: "Not available" },
+    freeDay: "Free",
     labTag: "LAB · not weekly",
     labTagShort: "LAB",
     typeLecture: "Lecture",
@@ -329,6 +330,7 @@ export const STRINGS = {
               mostEven: "الأكثر توازنًا", leastWaiting: "أقل انتظار",
               shortDay: "فيه يوم قصير", betterExists: "يوجد خيار أفضل",
               notAvailable: "غير متاح" },
+    freeDay: "فارغ",
     labTag: "مختبر · ليس أسبوعيًا",
     labTagShort: "مختبر",
     typeLecture: "محاضرة",
@@ -472,7 +474,7 @@ export function gridHTML(combo, view = "withLabs", animate = false, lang = "en")
 
     return `<div class="daycol">
               <div class="dayhead">${esc(dayShort(d, lang))}</div>
-              <div class="daybody">${voids}${blocks}</div>
+              <div class="daybody">${active.length ? "" : `<div class="freeday">${esc(S.freeDay)}</div>`}${voids}${blocks}</div>
             </div>`;
   }).join("");
 
@@ -1002,7 +1004,7 @@ export function dailyTotalsHTML(combo, view, lang) {
   const s = combo[view];
   const rows = SETTINGS.days.map((d) => {
     const b = s.byDay[d];
-    if (!b) return "";
+    if (!b) return `<tr><td>${esc(dayFull(d, lang))}</td><td colspan="5" class="printfree">${esc(S.freeDay)}</td></tr>`;
     return `<tr>
       <td>${esc(dayFull(d, lang))}</td>
       <td>${ltr(fmt(b.start))}</td>
