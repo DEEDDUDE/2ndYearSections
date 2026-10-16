@@ -79,7 +79,7 @@ rows(LABS, 6, "LABS").forEach(({ f, line }) => {
 });
 
 // ---- stats --------------------------------------------------
-function stats(blocks) {
+export function stats(blocks) {
   const byDay = {};
   let deadMin = 0, totalSpanMin = 0, classMin = 0, worstDayMin = 0, freeDays = 0;
   const starts = [], ends = [];
@@ -103,7 +103,7 @@ function stats(blocks) {
     lateDays: ends.filter((e) => e >= 16 * 60).length };
 }
 
-const overlaps = (a, b) => a.day === b.day && a.start < b.end && b.start < a.end;
+export const overlaps = (a, b) => a.day === b.day && a.start < b.end && b.start < a.end;
 
 // ---- combos -------------------------------------------------
 export function buildCombos() {
