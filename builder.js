@@ -257,8 +257,8 @@ export function builderHTML(b, lang) {
         <div class="btools">
           <input class="bsearch" type="search" data-search value="${esc(b.q)}" placeholder="${esc(S.search)}" aria-label="${esc(S.search)}" enterkeyhint="search">
           <div class="brow bfill">
-            <select class="bsel" data-fillsec aria-label="${esc(S.mySection)}">${SETTINGS.sectionsAvailable.map((n) => `<option value="${n}">${esc(S.mySection)} ${n}</option>`).join("")}</select>
-            <select class="bsel" data-fillgrp aria-label="${esc(S.myGroup)}">${SETTINGS.labGroups.map((n) => `<option value="${n}">${esc(S.myGroup)} ${n}</option>`).join("")}</select>
+            <select class="bsel" data-fillsec aria-label="${esc(S.mySection)}">${SETTINGS.sectionsAvailable.map((n) => `<option value="${n}"${n === (b.fillSec ?? 0) ? " selected" : ""}>${esc(S.mySection)} ${n}</option>`).join("")}</select>
+            <select class="bsel" data-fillgrp aria-label="${esc(S.myGroup)}">${SETTINGS.labGroups.map((n) => `<option value="${n}"${n === (b.fillGrp ?? 0) ? " selected" : ""}>${esc(S.myGroup)} ${n}</option>`).join("")}</select>
             <button class="bbtn" data-fill>${esc(S.fill)}</button>
           </div>
           <div class="bmsg">${esc(S.fillHint)}</div>
@@ -351,8 +351,11 @@ export function wireBuilder(root, b, h) {
     h.rerender();
   }));
   root.querySelector("[data-onlyfit]")?.addEventListener("change", (e) => { b.onlyFit = e.target.checked; h.rerender(); });
+  root.querySelector("[data-fillsec]")?.addEventListener("change", (e) => { b.fillSec = +e.target.value; });
+  root.querySelector("[data-fillgrp]")?.addEventListener("change", (e) => { b.fillGrp = +e.target.value; });
   root.querySelector("[data-fill]")?.addEventListener("click", () => {
     const sec = +root.querySelector("[data-fillsec]").value, grp = +root.querySelector("[data-fillgrp]").value;
+    b.fillSec = sec; b.fillGrp = grp;
     b.picks = {};
     for (const c of COURSE_IDS) {
       const lec = lecOpts(c).includes(sec) ? sec : null;
