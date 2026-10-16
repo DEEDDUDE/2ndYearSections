@@ -279,7 +279,8 @@ export function builderHTML(b, lang) {
           <button data-bview="withLabs" aria-pressed="${b.view === "withLabs"}">${esc(S.fullWeek)}</button>
           <button data-bview="lecturesOnly" aria-pressed="${b.view === "lecturesOnly"}">${esc(S.lectureWeek)}</button>
         </div>
-        ${combo.count ? gridHTML(combo, b.view, false, lang) : `<p class="bempty">${esc(S.empty)}</p>`}
+        ${combo.count ? "" : `<p class="bempty">${esc(S.empty)}</p>`}
+        ${gridHTML(combo, b.view, false, lang)}
         ${combo.count ? instructorsHTML(combo, lang) : ""}
         ${combo.valid && show ? statsHTML(combo, b.view, lang) : ""}
         ${combo.valid && combo.count ? `
