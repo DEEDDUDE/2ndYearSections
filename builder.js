@@ -25,6 +25,7 @@ export const BSTR = {
     title: "Build your own schedule", printTitle: "My schedule",
     sub: "Pick any section per course. Clashes show up as you go.",
     back: "Back to home", tabPick: "Pick", tabWeek: "Week",
+    mySection: "My section", myGroup: "Lab group", fill: "Fill from section", fillHint: "Fills every course from that section, then edit any course.",
     clear: "Clear all", share: "Copy link", copied: "Link copied",
     search: "Search doctor, course, room, day…", onlyFit: "Only what fits",
     notTaking: "Not taking", lecture: "Lecture", lab: "Lab", labs: "Labs", section: "Section",
@@ -39,6 +40,7 @@ export const BSTR = {
     title: "ابنِ جدولك بنفسك", printTitle: "جدولي",
     sub: "اختر أي شعبة لكل مادة. يظهر التعارض فور اختيارك.",
     back: "العودة للرئيسية", tabPick: "الاختيار", tabWeek: "الأسبوع",
+    mySection: "شعبتي", myGroup: "مجموعة المختبر", fill: "املأ من الشعبة", fillHint: "يملأ كل المواد من تلك الشعبة، ثم عدّل أي مادة.",
     clear: "مسح الكل", share: "نسخ الرابط", copied: "تم نسخ الرابط",
     search: "ابحث عن دكتور أو مادة أو قاعة أو يوم…", onlyFit: "المناسب فقط",
     notTaking: "لن أدرسها", lecture: "محاضرة", lab: "مختبر", labs: "المختبرات", section: "شعبة",
@@ -254,6 +256,12 @@ export function builderHTML(b, lang) {
       <div class="bpanel">
         <div class="btools">
           <input class="bsearch" type="search" data-search value="${esc(b.q)}" placeholder="${esc(S.search)}" aria-label="${esc(S.search)}" enterkeyhint="search">
+          <div class="brow bfill">
+            <select class="bsel" data-fillsec aria-label="${esc(S.mySection)}">${SETTINGS.sectionsAvailable.map((n) => `<option value="${n}">${esc(S.mySection)} ${n}</option>`).join("")}</select>
+            <select class="bsel" data-fillgrp aria-label="${esc(S.myGroup)}">${SETTINGS.labGroups.map((n) => `<option value="${n}">${esc(S.myGroup)} ${n}</option>`).join("")}</select>
+            <button class="bbtn" data-fill>${esc(S.fill)}</button>
+          </div>
+          <div class="bmsg">${esc(S.fillHint)}</div>
           <div class="brow">
             <label class="bfit"><input type="checkbox" data-onlyfit ${b.onlyFit ? "checked" : ""}> ${esc(S.onlyFit)}</label>
           </div>
@@ -342,6 +350,16 @@ export function wireBuilder(root, b, h) {
     h.rerender();
   }));
   root.querySelector("[data-onlyfit]")?.addEventListener("change", (e) => { b.onlyFit = e.target.checked; h.rerender(); });
+  root.querySelector("[data-fill]")?.addEventListener("click", () => {
+    const sec = +root.querySelector("[data-fillsec]").value, grp = +root.querySelector("[data-fillgrp]").value;
+    b.picks = {};
+    for (const c of COURSE_IDS) {
+      const lec = lecOpts(c).includes(sec) ? sec : null;
+      const code = sec * 10 + grp;
+      b.picks[c] = { lec, lab: courses[c].hasLab && labOpts(c).includes(code) ? code : null };
+    }
+    b.open = null; b.tab = "week"; change();
+  });
   root.querySelector("[data-clear]")?.addEventListener("click", () => { b.picks = {}; b.instr = {}; b.q = ""; change(); });
   root.querySelector("[data-share]")?.addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(location.href); msg(S.copied); } catch { msg(location.href); }

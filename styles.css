@@ -818,3 +818,5 @@ html[lang="ar"] .void .vd-short {
   .buildview .blayout { display: block; }
   .buildview .bweek { display: block !important; }
 }
+.bsel { font: inherit; font-size: 16px; min-height: 40px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 4px; background: #fff; color: var(--hema); }
+.bfill { gap: 6px; }
