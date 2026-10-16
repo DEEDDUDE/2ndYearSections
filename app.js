@@ -153,7 +153,7 @@ export const num = (n, lang) => String(n);
 
 // Durations: "6h 50m" in EN, "6س 10د" in AR — Arabic unit letters
 // (hour/minute), Western digits. "Hours and minutes read faster than a
-// clock-format number" (BUILD-SPEC.md §9) applies on screen too.
+// clock-format number" applies on screen too.
 export function durText(m, lang) {
   if (lang !== "ar") return dur(m);
   const h = Math.floor(m / 60), mm = m % 60;
