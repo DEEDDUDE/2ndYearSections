@@ -1,7 +1,6 @@
-// Offline shell. Static files are cached on install; schedule-data.js is
-// served stale-while-revalidate so a data fix reaches students on their next
-// open. Bump VERSION when shipping code changes so old caches are dropped.
-const VERSION = "v5";
+// Offline shell. Files are cached on install and refreshed network-first, so
+// a deploy (or a data fix) shows on the next open; offline falls back to cache. Bump VERSION when shipping code changes so old caches are dropped.
+const VERSION = "v6";
 const CACHE = `section-picker-${VERSION}`;
 const SHELL = [
   "./", "index.html", "app.js", "builder.js", "styles.css", "schedule-data.js",
@@ -9,6 +8,7 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (e) => {
+  self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
 });
 
@@ -36,10 +36,15 @@ self.addEventListener("fetch", (e) => {
   }
   if (url.origin !== location.origin) return;
 
-  // data + app code: stale-while-revalidate (fresh next open, instant now)
+  // app code + data: network-first so a deploy shows on the very next open;
+  // the cache is the offline fallback
   e.respondWith(caches.open(CACHE).then(async (c) => {
-    const hit = await c.match(req, { ignoreSearch: true });
-    const net = fetch(req).then((r) => { if (r.ok) c.put(req, r.clone()); return r; }).catch(() => null);
-    return hit || (await net) || (req.mode === "navigate" ? c.match("index.html") : Response.error());
+    try {
+      const r = await fetch(req, { cache: "no-cache" });
+      if (r.ok) c.put(req, r.clone());
+      return r;
+    } catch {
+      return (await c.match(req, { ignoreSearch: true })) || (req.mode === "navigate" ? c.match("index.html") : Response.error());
+    }
   }));
 });
