@@ -517,10 +517,14 @@ export function blockPopoverHTML(info, lang) {
 // print — the schedule table's Instructor column carries it there).
 export function instructorsHTML(combo, lang) {
   const S = STRINGS[lang];
-  const items = [...new Map(combo.lectures.map((l) => [l.course, l])).values()]
-    .map((l) => ({ id: l.course, name: instructorOf(l, lang) }))
-    .filter((x) => x.name)
-    .map((x) => `<li><span class="insname">${esc(courseName(x.id, lang))}</span><span class="insdoc">${esc(x.name)}</span></li>`)
+  const byCourse = new Map();
+  for (const l of combo.lectures) {
+    const name = instructorOf(l, lang);
+    if (!name) continue;
+    (byCourse.get(l.course) || byCourse.set(l.course, new Set()).get(l.course)).add(name);
+  }
+  const items = [...byCourse.entries()]
+    .map(([id, names]) => `<li><span class="insname">${esc(courseName(id, lang))}</span><span class="insdoc">${[...names].map(esc).join(" · ")}</span></li>`)
     .join("");
   return items ? `<div class="instructors"><div class="inshead">${esc(S.instructorsHead)}</div><ul>${items}</ul></div>` : "";
 }

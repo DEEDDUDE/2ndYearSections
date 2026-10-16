@@ -26,6 +26,8 @@ export const BSTR = {
     sub: "Pick any section per course. Clashes show up as you go.",
     back: "Back to home", tabPick: "Pick", tabWeek: "Week",
     mySection: "My section", myGroup: "Lab group", fill: "Fill from section", fillHint: "Fills every course from that section, then edit any course.",
+    wholeSection: "Whole section (both lectures)", lec1: "Lecture 1", lec2: "Lecture 2",
+    mixHint: "Tap a whole section, or pick lecture 1 and lecture 2 from different sections.",
     clear: "Clear all", share: "Copy link", copied: "Link copied",
     search: "Search doctor, course, room, day…", onlyFit: "Only what fits",
     notTaking: "Not taking", lecture: "Lecture", lab: "Lab", labs: "Labs", section: "Section",
@@ -41,6 +43,8 @@ export const BSTR = {
     sub: "اختر أي شعبة لكل مادة. يظهر التعارض فور اختيارك.",
     back: "العودة للرئيسية", tabPick: "الاختيار", tabWeek: "الأسبوع",
     mySection: "شعبتي", myGroup: "مجموعة المختبر", fill: "املأ من الشعبة", fillHint: "يملأ كل المواد من تلك الشعبة، ثم عدّل أي مادة.",
+    wholeSection: "الشعبة كاملة (المحاضرتان)", lec1: "المحاضرة 1", lec2: "المحاضرة 2",
+    mixHint: "اضغط الشعبة كاملة، أو اختر المحاضرة 1 والمحاضرة 2 من شعبتين مختلفتين.",
     clear: "مسح الكل", share: "نسخ الرابط", copied: "تم نسخ الرابط",
     search: "ابحث عن دكتور أو مادة أو قاعة أو يوم…", onlyFit: "المناسب فقط",
     notTaking: "لن أدرسها", lecture: "محاضرة", lab: "مختبر", labs: "المختبرات", section: "شعبة",
@@ -57,16 +61,28 @@ export const BSTR = {
 const COURSE_IDS = Object.keys(courses);
 const lecOpts = (c) => SETTINGS.sectionsAvailable.filter((s) => lectures.some((l) => l.course === c && l.section === s));
 const labOpts = (c) => [...new Set(labs.filter((l) => l.course === c).map((l) => l.labCode))].sort((a, b) => a - b);
+const byDayOrder = (a, b) => SETTINGS.days.indexOf(a.day) - SETTINGS.days.indexOf(b.day) || a.start - b.start;
+// a section's lecture meetings in week order: index 0 = first lecture, 1 = second
+const lecMeetings = (c, sec) => lectures.filter((l) => l.course === c && l.section === sec)
+  .map((l) => ({ ...l, kind: "lecture" })).sort(byDayOrder);
 const meetingsFor = (c, kind, id) => kind === "lec"
-  ? lectures.filter((l) => l.course === c && l.section === id).map((l) => ({ ...l, kind: "lecture" }))
+  ? lecMeetings(c, id)
   : labs.filter((l) => l.course === c && l.labCode === id).map((l) => ({ ...l, kind: "lab" }));
+const slotsOf = (p) => (p && p.l) || [null, null];
 const doctorOf = (c, s, lang) => instructors[`${c}-${s}`]?.[lang] ?? "";
 
+// skip = { c, k: "lec"|"lab", slot?: 0|1 } leaves that part out (used to ask
+// "would this option clash with everything ELSE I picked?")
 function pickedMeetings(picks, skip) {
   const out = [];
   for (const c of COURSE_IDS) {
     const p = picks[c] || {};
-    if (p.lec != null && !(skip && skip.c === c && skip.k === "lec")) out.push(...meetingsFor(c, "lec", p.lec));
+    slotsOf(p).forEach((sec, i) => {
+      if (sec == null) return;
+      if (skip && skip.c === c && skip.k === "lec" && (skip.slot == null || skip.slot === i)) return;
+      const m = lecMeetings(c, sec)[i];
+      if (m) out.push(m);
+    });
     if (p.lab != null && !(skip && skip.c === c && skip.k === "lab")) out.push(...meetingsFor(c, "lab", p.lab));
   }
   return out;
@@ -90,20 +106,24 @@ export function comboFromPicks(picks) {
 const hasMeetings = (combo, view) => SETTINGS.days.some((d) => combo[view].byDay[d]);
 
 // ---- clash status of one option against everything else picked --------
-function clashesFor(picks, c, kind, id) {
-  const others = pickedMeetings(picks, { c, k: kind });
+function clashesFor(picks, c, kind, id, slot) {
+  const others = pickedMeetings(picks, { c, k: kind, slot });
+  const mine = kind === "lec" && slot != null ? [lecMeetings(c, id)[slot]].filter(Boolean) : meetingsFor(c, kind, id);
   const out = [];
-  for (const m of meetingsFor(c, kind, id))
+  for (const m of mine)
     for (const o of others) if (overlaps(m, o)) out.push({ other: o, mine: m });
   return out;
 }
 
 // ---- hash <-> picks ("MB7,BC4,BCL41") -----------------------------
+// "MB7" = both lectures from section 7; "MB7.4" = 1st lecture from 7, 2nd from 4;
+// "MB7." / "MB.4" = only one of the two; "BCL41" = lab 41
 export function picksToHash(picks) {
   const t = [];
   for (const c of COURSE_IDS) {
     const p = picks[c] || {};
-    if (p.lec != null) t.push(`${c}${p.lec}`);
+    const [a, b2] = slotsOf(p);
+    if (a != null || b2 != null) t.push(a === b2 ? `${c}${a}` : `${c}${a ?? ""}.${b2 ?? ""}`);
     if (p.lab != null) t.push(`${c}L${p.lab}`);
   }
   return t.join(",");
@@ -111,12 +131,17 @@ export function picksToHash(picks) {
 export function hashToPicks(str) {
   const picks = {};
   for (const tok of String(str || "").split(",")) {
-    const m = /^([A-Z]{2})(L?)(\d+)$/.exec(tok);
+    const m = /^([A-Z]{2})(L?)(\d*)(?:\.(\d*))?$/.exec(tok);
     if (!m || !courses[m[1]]) continue;
-    const id = +m[3];
+    const c = m[1];
     if (m[2] === "L") {
-      if (courses[m[1]].hasLab && labOpts(m[1]).includes(id)) (picks[m[1]] ||= {}).lab = id;
-    } else if (lecOpts(m[1]).includes(id)) (picks[m[1]] ||= {}).lec = id;
+      const id = +m[3];
+      if (m[3] && m[4] === undefined && courses[c].hasLab && labOpts(c).includes(id)) (picks[c] ||= {}).lab = id;
+      continue;
+    }
+    const ok = (v) => (v && lecOpts(c).includes(+v) ? +v : null);
+    const l = m[4] === undefined ? [ok(m[3]), ok(m[3])] : [ok(m[3]), ok(m[4])];
+    if (l[0] != null || l[1] != null) (picks[c] ||= {}).l = l;
   }
   return picks;
 }
@@ -152,42 +177,59 @@ function matches(q, c, kind, id) {
 }
 
 // ---- rendering --------------------------------------------------------
-function whenHTML(c, kind, id, lang) {
-  const byTime = new Map();
-  for (const m of meetingsFor(c, kind, id)) {
-    const k = range(m);
-    (byTime.get(k) || byTime.set(k, []).get(k)).push(m.day);
-  }
-  return [...byTime.entries()].map(([t, days]) =>
-    `${days.sort((a, b) => SETTINGS.days.indexOf(a) - SETTINGS.days.indexOf(b)).map((d) => esc(dayName(d, lang))).join(" · ")} ${ltr(t)}`
-  ).join(" / ");
+function meetLine(m, lang) {
+  const S = BSTR[lang];
+  return `${esc(dayName(m.day, lang))} ${ltr(range(m))} · ${ltr(esc(m.room === null ? S.roomNone : m.room))}`;
+}
+function statusHTML(clashes, lang) {
+  const S = BSTR[lang];
+  if (!clashes.length) return `<span class="bstat ok">${esc(S.fits)}</span>`;
+  const f = clashes[0];
+  return `<span class="bstat bad">${S.overlaps(esc(cname(f.other.course, lang)), esc(dayName(f.mine.day, lang)), ltr(range(f.other)))}${clashes.length > 1 ? esc(S.more(clashes.length - 1)) : ""}</span>`;
 }
 function roomsHTML(c, kind, id, lang) {
   const S = BSTR[lang];
   const rooms = meetingsFor(c, kind, id).map((m) => (m.room === null ? S.roomNone : m.room));
   return [...new Set(rooms)].map((r) => ltr(esc(r))).join(" · ");
 }
+function whenHTML(c, kind, id, lang) {
+  return meetingsFor(c, kind, id).map((m) => `${esc(dayName(m.day, lang))} ${ltr(range(m))}`).join(" / ");
+}
 
-function optionHTML(b, c, kind, id, lang) {
-  const S = BSTR[lang];
-  const sel = (b.picks[c] || {})[kind] === id;
-  const clashes = clashesFor(b.picks, c, kind, id);
-  const fits = clashes.length === 0;
-  if (b.onlyFit && !fits && !sel) return "";
-  const first = clashes[0];
-  const status = fits
-    ? `<span class="bstat ok">${esc(S.fits)}</span>`
-    : `<span class="bstat bad">${S.overlaps(esc(cname(first.other.course, lang)), esc(dayName(first.mine.day, lang)), ltr(range(first.other)))}${clashes.length > 1 ? esc(S.more(clashes.length - 1)) : ""}</span>`;
-  const doc = kind === "lec" ? doctorOf(c, id, lang) : "";
-  return `<button class="bopt${sel ? " sel" : ""}${fits ? "" : " clash"}" data-pick data-course="${c}" data-kind="${kind}" data-id="${id}" aria-pressed="${sel}">
+// lab option: one tap target
+function labOptionHTML(b, c, id, lang) {
+  const sel = (b.picks[c] || {}).lab === id;
+  const clashes = clashesFor(b.picks, c, "lab", id);
+  if (b.onlyFit && clashes.length && !sel) return "";
+  return `<button class="bopt${sel ? " sel" : ""}${clashes.length ? " clash" : ""}" data-pick data-course="${c}" data-kind="lab" data-id="${id}" aria-pressed="${sel}">
     <span class="bnum">${ltr(String(id))}</span>
-    <span class="bmain">
-      ${doc ? `<span class="bdoc">${esc(doc)}</span>` : ""}
-      <span class="bwhen">${whenHTML(c, kind, id, lang)}</span>
-      <span class="bwhere">${roomsHTML(c, kind, id, lang)}</span>
-    </span>
-    ${status}
+    <span class="bmain"><span class="bwhen">${whenHTML(c, "lab", id, lang)}</span><span class="bwhere">${roomsHTML(c, "lab", id, lang)}</span></span>
+    ${statusHTML(clashes, lang)}
   </button>`;
+}
+
+// lecture option: the whole section in one tap, or each of its two weekly
+// lectures separately (so lecture 1 can come from section 7 and lecture 2 from section 4)
+function lecOptionHTML(b, c, id, lang) {
+  const S = BSTR[lang];
+  const [s0, s1] = slotsOf(b.picks[c]);
+  const whole = s0 === id && s1 === id;
+  const all = clashesFor(b.picks, c, "lec", id);
+  const parts = lecMeetings(c, id).map((m, i) => ({ m, i, cl: clashesFor(b.picks, c, "lec", id, i), sel: slotsOf(b.picks[c])[i] === id }));
+  if (b.onlyFit && parts.every((p) => p.cl.length) && !parts.some((p) => p.sel)) return "";
+  const doc = doctorOf(c, id, lang);
+  return `<div class="bcard${whole ? " sel" : ""}">
+    <button class="bopt${whole ? " sel" : ""}${all.length ? " clash" : ""}" data-pick data-course="${c}" data-kind="lec" data-id="${id}" aria-pressed="${whole}">
+      <span class="bnum">${ltr(String(id))}</span>
+      <span class="bmain">${doc ? `<span class="bdoc">${esc(doc)}</span>` : ""}<span class="bwhere">${esc(S.wholeSection)}</span></span>
+      ${statusHTML(all, lang)}
+    </button>
+    <div class="bmeets">${parts.map(({ m, i, cl, sel }) => `<button class="bmeet${sel ? " sel" : ""}${cl.length ? " clash" : ""}" data-meet data-course="${c}" data-id="${id}" data-slot="${i}" aria-pressed="${sel}">
+        <span class="bmeetn">${esc(i === 0 ? S.lec1 : S.lec2)}</span>
+        <span class="bmeetw">${meetLine(m, lang)}</span>
+        ${statusHTML(cl, lang)}
+      </button>`).join("")}</div>
+  </div>`;
 }
 
 function courseHTML(b, c, lang) {
@@ -199,8 +241,12 @@ function courseHTML(b, c, lang) {
   const searching = !!b.q.trim();
   const open = b.open === c || (searching && (lecIds.length || labIds.length));
   if (searching && !lecIds.length && !labIds.length) return "";
+  const [s0, s1] = slotsOf(p);
+  const lecSummary = s0 == null && s1 == null ? `${S.lecture}: ${S.notTaking}`
+    : s0 === s1 ? `${S.lecture} ${ltr(String(s0))}`
+    : `${S.lec1} ${ltr(String(s0 ?? "—"))} · ${S.lec2} ${ltr(String(s1 ?? "—"))}`;
   const summary = [
-    p.lec != null ? `${S.lecture} ${ltr(String(p.lec))}` : `${S.lecture}: ${S.notTaking}`,
+    lecSummary,
     courses[c].hasLab ? (p.lab != null ? `${S.lab} ${ltr(String(p.lab))}` : `${S.lab}: ${S.notTaking}`) : "",
   ].filter(Boolean).join(" · ");
 
@@ -221,13 +267,13 @@ function courseHTML(b, c, lang) {
     </button>
     ${open ? `<div class="bbody">
       ${doctorChips}
-      <div class="bgroup"><div class="bgrouphead">${esc(S.lecture)}
-        ${p.lec != null ? `<button class="bnone" data-none="${c}" data-kind="lec">${esc(S.notTaking)}</button>` : ""}</div>
-        ${lecIds.map((id) => optionHTML(b, c, "lec", id, lang)).join("") || `<p class="bempty">${esc(S.noMatch)}</p>`}
+      <div class="bgroup"><div class="bgrouphead">${esc(S.lecture)} <span class="bhint">${esc(S.mixHint)}</span>
+        ${s0 != null || s1 != null ? `<button class="bnone" data-none="${c}" data-kind="lec">${esc(S.notTaking)}</button>` : ""}</div>
+        ${lecIds.map((id) => lecOptionHTML(b, c, id, lang)).join("") || `<p class="bempty">${esc(S.noMatch)}</p>`}
       </div>
       ${courses[c].hasLab ? `<div class="bgroup"><div class="bgrouphead">${esc(S.labs)}
         ${p.lab != null ? `<button class="bnone" data-none="${c}" data-kind="lab">${esc(S.notTaking)}</button>` : ""}</div>
-        ${labIds.map((id) => optionHTML(b, c, "lab", id, lang)).join("") || `<p class="bempty">${esc(S.noMatch)}</p>`}
+        ${labIds.map((id) => labOptionHTML(b, c, id, lang)).join("") || `<p class="bempty">${esc(S.noMatch)}</p>`}
       </div>` : ""}
     </div>` : ""}
   </section>`;
@@ -236,7 +282,7 @@ function courseHTML(b, c, lang) {
 export function builderHTML(b, lang) {
   const S = BSTR[lang];
   const combo = comboFromPicks(b.picks);
-  const pickedCourses = COURSE_IDS.filter((c) => (b.picks[c] || {}).lec != null || (b.picks[c] || {}).lab != null).length;
+  const pickedCourses = COURSE_IDS.filter((c) => slotsOf(b.picks[c]).some((x) => x != null) || (b.picks[c] || {}).lab != null).length;
   const show = hasMeetings(combo, b.view);
   const notice = combo.valid ? "" : `<div class="clashnotice"><b>${esc(S.yourClash)}</b><div>${esc(conflictSentence(combo, lang))}</div></div>`;
   const courseList = COURSE_IDS.map((c) => courseHTML(b, c, lang)).join("");
@@ -340,11 +386,20 @@ export function wireBuilder(root, b, h) {
   root.querySelectorAll("[data-pick]").forEach((el) => el.addEventListener("click", () => {
     const c = el.dataset.course, k = el.dataset.kind, id = +el.dataset.id;
     const p = (b.picks[c] ||= {});
-    p[k] = p[k] === id ? null : id;
+    if (k === "lab") p.lab = p.lab === id ? null : id;
+    else { const [x, y] = slotsOf(p); p.l = x === id && y === id ? [null, null] : [id, id]; }
     change();
   }));
+  root.querySelectorAll("[data-meet]").forEach((el) => el.addEventListener("click", () => {
+    const p = (b.picks[el.dataset.course] ||= {}), i = +el.dataset.slot, id = +el.dataset.id;
+    const l = [...slotsOf(p)];
+    l[i] = l[i] === id ? null : id;
+    p.l = l; change();
+  }));
   root.querySelectorAll("[data-none]").forEach((el) => el.addEventListener("click", () => {
-    (b.picks[el.dataset.none] ||= {})[el.dataset.kind] = null; change();
+    const p = (b.picks[el.dataset.none] ||= {});
+    if (el.dataset.kind === "lab") p.lab = null; else p.l = [null, null];
+    change();
   }));
   root.querySelectorAll("[data-doc]").forEach((el) => el.addEventListener("click", () => {
     b.instr[el.dataset.doc] = el.dataset.name && b.instr[el.dataset.doc] !== el.dataset.name ? el.dataset.name : null;
@@ -360,7 +415,7 @@ export function wireBuilder(root, b, h) {
     for (const c of COURSE_IDS) {
       const lec = lecOpts(c).includes(sec) ? sec : null;
       const code = sec * 10 + grp;
-      b.picks[c] = { lec, lab: courses[c].hasLab && labOpts(c).includes(code) ? code : null };
+      b.picks[c] = { l: [lec, lec], lab: courses[c].hasLab && labOpts(c).includes(code) ? code : null };
     }
     b.open = null; b.tab = "week"; change();
   });
